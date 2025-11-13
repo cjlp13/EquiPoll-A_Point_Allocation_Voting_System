@@ -22,6 +22,17 @@ interface Choice {
   vote_count: number
 }
 
+interface SupabaseChoice {
+  id: string
+  choice_text: string
+}
+
+interface SupabaseVote {
+  choice_id: string
+  points: number
+  user_id: string
+}
+
 interface PollResultsModalProps {
   pollId: string
   pollTitle: string
@@ -54,9 +65,13 @@ export function PollResultsModal({ pollId, pollTitle, onClose }: PollResultsModa
 
         if (votesError) throw votesError
 
+        // Type assertions
+        const typedChoices = choicesData as SupabaseChoice[]
+        const typedVotes = votesData as SupabaseVote[]
+
         // Calculate total points and vote count for each choice
-        const choiceResults = choicesData.map((choice) => {
-          const choiceVotes = votesData.filter((v) => v.choice_id === choice.id)
+        const choiceResults = typedChoices.map((choice) => {
+          const choiceVotes = typedVotes.filter((v) => v.choice_id === choice.id)
           const totalPoints = choiceVotes.reduce((sum, v) => sum + Number(v.points), 0)
           
           return {
@@ -71,7 +86,7 @@ export function PollResultsModal({ pollId, pollTitle, onClose }: PollResultsModa
         choiceResults.sort((a, b) => b.total_points - a.total_points)
 
         // Calculate unique voters
-        const uniqueVoters = new Set(votesData.map((v) => v.user_id)).size
+        const uniqueVoters = new Set(typedVotes.map((v) => v.user_id)).size
         setTotalVoters(uniqueVoters)
 
         // Calculate consensus score (unanimity index)
