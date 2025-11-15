@@ -18,7 +18,7 @@ export default async function HomePage() {
     <div className="min-h-screen bg-background">
       <nav className="border-b border-border bg-card">
         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-primary">Poll System</h1>
+          <h1 className="text-2xl font-bold text-primary">Equi Poll</h1>
           <div className="flex gap-4">
             <Link href="/home">
               <Button variant="ghost">Home</Button>

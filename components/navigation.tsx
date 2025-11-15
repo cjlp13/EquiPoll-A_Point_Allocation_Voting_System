@@ -15,7 +15,7 @@ export function Navigation({ userEmail }: NavigationProps) {
     <nav className="border-b border-border bg-card sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
         <Link href="/home" className="text-2xl font-bold text-primary">
-          Poll System
+          EquiPoll
         </Link>
         <div className="flex gap-4 items-center">
           <Link href="/home">

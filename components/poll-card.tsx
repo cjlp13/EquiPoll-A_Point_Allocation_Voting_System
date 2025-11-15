@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { PointAllocationVoting } from "@/components/point-allocation-voting"
+import { PollResultsModal } from "@/components/poll-results-modal"
 
 interface Poll {
   id: string
@@ -24,6 +25,7 @@ interface PollCardProps {
 
 export function PollCard({ poll, onVote }: PollCardProps) {
   const [showVoting, setShowVoting] = useState(false)
+  const [showResults, setShowResults] = useState(false)
   const [hasVoted, setHasVoted] = useState(false)
   const [user, setUser] = useState<any>(null)
   const supabase = createClient()
@@ -60,21 +62,29 @@ export function PollCard({ poll, onVote }: PollCardProps) {
     onVote()
   }
 
+  if (showVoting) {
+    return (
+    <PointAllocationVoting
+      poll={poll}
+      onClose={() => setShowVoting(false)}
+      onVoteComplete={handleVoteComplete}
+    />
+    )
+  }
+
   return (
     <>
-      {showVoting ? (
-        <PointAllocationVoting poll={poll} onClose={() => setShowVoting(false)} onVoteComplete={handleVoteComplete} />
-      ) : (
-        <Card className="bg-card border-border hover:shadow-lg transition-shadow h-full flex flex-col">
-          <CardHeader>
-            <CardTitle className="text-xl">{poll.title}</CardTitle>
-            <CardDescription>by {poll.profiles?.full_name || "Anonymous"}</CardDescription>
-          </CardHeader>
-          <CardContent className="flex-1 flex flex-col justify-between">
-            <p className="text-sm text-muted-foreground mb-4">{poll.description || "No description provided"}</p>
+      <Card className="bg-card border-border hover:shadow-lg transition-shadow h-full flex flex-col">
+        <CardHeader>
+          <CardTitle className="text-xl">{poll.title}</CardTitle>
+          <CardDescription>by {poll.profiles?.full_name || "Anonymous"}</CardDescription>
+        </CardHeader>
+        <CardContent className="flex-1 flex flex-col justify-between">
+          <p className="text-sm text-muted-foreground mb-4">{poll.description || "No description provided"}</p>
+          <div className="flex gap-2">
             <Button
               onClick={() => setShowVoting(true)}
-              className={`w-full ${
+              className={`flex-1 ${
                 hasVoted
                   ? "bg-muted text-muted-foreground hover:bg-muted"
                   : "bg-accent text-accent-foreground hover:opacity-90"
@@ -83,8 +93,23 @@ export function PollCard({ poll, onVote }: PollCardProps) {
             >
               {hasVoted ? "Already Voted" : "Vote Now"}
             </Button>
-          </CardContent>
-        </Card>
+            <Button
+              onClick={() => setShowResults(true)}
+              variant="outline"
+              className="flex-1 border-border text-foreground hover:bg-muted bg-transparent"
+            >
+              View Results
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {showResults && (
+        <PollResultsModal
+          pollId={poll.id}
+          pollTitle={poll.title}
+          onClose={() => setShowResults(false)}
+        />
       )}
     </>
   )

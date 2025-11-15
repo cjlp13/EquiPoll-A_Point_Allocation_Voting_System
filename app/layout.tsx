@@ -8,7 +8,7 @@ const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Voting System",
+  title: "EquiPoll",
   description: "Create and participate in polls with point allocation voting",
   generator: "v0.app",
   icons: {

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 import { PollCreationModal } from "@/components/poll-creation-modal"
 import { PollEditModal } from "@/components/poll-edit-modal"
+import { PollResultsModal } from "@/components/poll-results-modal"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 interface Poll {
@@ -22,6 +23,7 @@ export default function MyPollsPage() {
   const [user, setUser] = useState<any>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [editingPoll, setEditingPoll] = useState<Poll | null>(null)
+  const [viewingResultsPoll, setViewingResultsPoll] = useState<Poll | null>(null)
   const router = useRouter()
   const supabase = createClient()
 
@@ -129,6 +131,14 @@ export default function MyPollsPage() {
                         size="sm"
                         variant="outline"
                         className="border-border text-foreground hover:bg-muted bg-transparent"
+                        onClick={() => setViewingResultsPoll(poll)}
+                      >
+                        View Results
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-border text-foreground hover:bg-muted bg-transparent"
                         onClick={() => setEditingPoll(poll)}
                       >
                         Edit
@@ -155,6 +165,14 @@ export default function MyPollsPage() {
 
         {editingPoll && (
           <PollEditModal poll={editingPoll} onClose={() => setEditingPoll(null)} onPollUpdated={handlePollUpdated} />
+        )}
+
+        {viewingResultsPoll && (
+          <PollResultsModal
+            pollId={viewingResultsPoll.id}
+            pollTitle={viewingResultsPoll.title}
+            onClose={() => setViewingResultsPoll(null)}
+          />
         )}
       </div>
     </div>
