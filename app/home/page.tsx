@@ -6,6 +6,7 @@ import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Navigation } from "@/components/navigation"
 import { PollCard } from "@/components/poll-card"
+import { PollResultsModal } from "@/components/poll-results-modal"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 
@@ -23,7 +24,8 @@ interface Poll {
 export default function HomePage() {
   const [polls, setPolls] = useState<Poll[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedPoll, setSelectedPoll] = useState<string | null>(null)
+  const [expandedPollId, setExpandedPollId] = useState<string | null>(null)
+  const [resultsPoll, setResultsPoll] = useState<{ id: string; title: string } | null>(null)
   const [user, setUser] = useState<any>(null)
   const router = useRouter()
   const supabase = createClient()
@@ -135,25 +137,51 @@ export default function HomePage() {
       <Navigation userEmail={user?.email} />
 
       <div className="max-w-7xl mx-auto px-6 py-12">
-        <h1 className="text-3xl font-bold mb-8">All Polls</h1>
+        <div className="mb-8 rounded-lg bg-card/90 border border-border p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-extrabold mb-1 text-primary">Welcome to EquiPoll</h1>
+              <p className="text-sm text-muted-foreground">Create balanced, point-allocation polls and see clear results — fair, equitable decision-making for groups.</p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="default">
+                <Link href="/my-polls">Create a Poll</Link>
+              </Button>
+              <Button variant="ghost">
+                <Link href="/my-polls">My Polls</Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <h2 className="text-2xl font-semibold mb-4 text-primary">All Polls</h2>
 
         {polls.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-muted-foreground mb-4">No polls yet. Be the first to create one!</p>
-            <Button className="bg-primary text-primary-foreground hover:opacity-90">
+            <Button>
               <Link href="/my-polls">Create a Poll</Link>
             </Button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {polls.map((poll) => (
-              <div key={poll.id} onClick={() => setSelectedPoll(poll.id)}>
-                <PollCard poll={poll} onVote={() => setSelectedPoll(null)} />
+              <div key={poll.id} className="transform hover:-translate-y-1 transition">
+                <PollCard
+                  poll={poll}
+                  onVote={() => setExpandedPollId(null)}
+                  expanded={expandedPollId === poll.id}
+                  onToggleExpand={(id) => setExpandedPollId(id)}
+                  onRequestResults={(id, title) => setResultsPoll({ id, title })}
+                />
               </div>
             ))}
           </div>
         )}
       </div>
+      {resultsPoll && (
+        <PollResultsModal pollId={resultsPoll.id} pollTitle={resultsPoll.title} onClose={() => setResultsPoll(null)} />
+      )}
     </div>
   )
 }

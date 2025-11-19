@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Plus, X } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 interface PollCreationModalProps {
@@ -92,11 +93,20 @@ export function PollCreationModal({ onClose, onPollCreated }: PollCreationModalP
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <Card className="bg-card border-border w-full max-w-md">
+    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50">
+      <Card className="bg-card border-border w-full max-w-xl rounded-xl shadow-2xl">
         <CardHeader>
-          <CardTitle>Create New Poll</CardTitle>
-          <CardDescription>Add a title, description, and at least 2 choices</CardDescription>
+          <div className="flex items-start justify-between w-full">
+            <div>
+              <CardTitle className="text-lg font-semibold">Create New Poll</CardTitle>
+              <CardDescription className="text-sm text-muted-foreground">Add a title, description, and at least 2 choices</CardDescription>
+            </div>
+            <div>
+              <Button size="sm" variant="ghost" onClick={onClose} className="-mr-2">
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -107,7 +117,7 @@ export function PollCreationModal({ onClose, onPollCreated }: PollCreationModalP
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="What's your question?"
-                className="bg-input border-border"
+                className="bg-input border-border text-foreground"
                 required
               />
             </div>
@@ -119,7 +129,7 @@ export function PollCreationModal({ onClose, onPollCreated }: PollCreationModalP
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Add context (optional)"
-                className="bg-input border-border"
+                className="bg-input border-border text-foreground"
               />
             </div>
 
@@ -131,13 +141,13 @@ export function PollCreationModal({ onClose, onPollCreated }: PollCreationModalP
                     value={choice}
                     onChange={(e) => updateChoice(index, e.target.value)}
                     placeholder={`Choice ${index + 1}`}
-                    className="bg-input border-border"
+                    className="bg-input border-border text-foreground"
                   />
                   {choices.length > 2 && (
                     <Button
                       type="button"
-                      variant="outline"
-                      className="border-border text-foreground hover:bg-muted bg-transparent"
+                      variant="destructive"
+                      size="sm"
                       onClick={() => removeChoice(index)}
                     >
                       Remove
@@ -145,32 +155,18 @@ export function PollCreationModal({ onClose, onPollCreated }: PollCreationModalP
                   )}
                 </div>
               ))}
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full border-border text-foreground hover:bg-muted bg-transparent"
-                onClick={addChoice}
-              >
-                Add Choice
+              <Button type="button" variant="outline" className="w-full justify-center" onClick={addChoice}>
+                <Plus className="h-4 w-4 mr-2" /> Add Choice
               </Button>
             </div>
 
-            {error && <p className="text-sm text-accent">{error}</p>}
+            {error && <p className="text-sm text-destructive">{error}</p>}
 
-            <div className="flex gap-2 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                className="flex-1 border-border text-foreground hover:bg-muted bg-transparent"
-                onClick={onClose}
-              >
+            <div className="flex gap-3 pt-4">
+              <Button type="button" variant="ghost" className="flex-1" onClick={onClose}>
                 Cancel
               </Button>
-              <Button
-                type="submit"
-                className="flex-1 bg-primary text-primary-foreground hover:opacity-90"
-                disabled={loading}
-              >
+              <Button type="submit" className="flex-1 bg-primary text-primary-foreground hover:opacity-95" disabled={loading}>
                 {loading ? "Creating..." : "Create Poll"}
               </Button>
             </div>

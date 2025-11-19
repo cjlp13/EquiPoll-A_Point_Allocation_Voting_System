@@ -8,6 +8,8 @@ import { useRouter } from "next/navigation"
 import { PollCreationModal } from "@/components/poll-creation-modal"
 import { PollEditModal } from "@/components/poll-edit-modal"
 import { PollResultsModal } from "@/components/poll-results-modal"
+import { PollCard } from "@/components/poll-card"
+import { BarChart2, Edit2, Trash2 } from "lucide-react"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 interface Poll {
@@ -24,6 +26,8 @@ export default function MyPollsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [editingPoll, setEditingPoll] = useState<Poll | null>(null)
   const [viewingResultsPoll, setViewingResultsPoll] = useState<Poll | null>(null)
+  const [expandedPollId, setExpandedPollId] = useState<string | null>(null)
+  const [resultsPoll, setResultsPoll] = useState<{ id: string; title: string } | null>(null)
   const router = useRouter()
   const supabase = createClient()
 
@@ -41,7 +45,14 @@ export default function MyPollsPage() {
 
         const { data, error } = await supabase
           .from("polls")
-          .select("*")
+          .select(`
+            id,
+            title,
+            description,
+            user_id,
+            created_at,
+            profiles(full_name)
+          `)
           .eq("user_id", user.id)
           .order("created_at", { ascending: false })
 
@@ -97,11 +108,8 @@ export default function MyPollsPage() {
 
       <div className="max-w-7xl mx-auto px-6 py-12">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold">My Polls</h1>
-          <Button
-            onClick={() => setShowCreateModal(true)}
-            className="bg-accent text-accent-foreground hover:opacity-90"
-          >
+          <h1 className="text-3xl font-extrabold text-primary">My Polls</h1>
+          <Button onClick={() => setShowCreateModal(true)}>
             Create New Poll
           </Button>
         </div>
@@ -109,52 +117,36 @@ export default function MyPollsPage() {
         {polls.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-muted-foreground mb-4">You haven&apos;t created any polls yet.</p>
-            <Button
-              onClick={() => setShowCreateModal(true)}
-              className="bg-primary text-primary-foreground hover:opacity-90"
-            >
-              Create Your First Poll
-            </Button>
+            <Button onClick={() => setShowCreateModal(true)}>Create Your First Poll</Button>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4">
             {polls.map((poll) => (
-              <Card key={poll.id} className="bg-card border-border">
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle>{poll.title}</CardTitle>
-                      <CardDescription>{poll.description || "No description"}</CardDescription>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="border-border text-foreground hover:bg-muted bg-transparent"
-                        onClick={() => setViewingResultsPoll(poll)}
-                      >
-                        View Results
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="border-border text-foreground hover:bg-muted bg-transparent"
-                        onClick={() => setEditingPoll(poll)}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="border-accent text-accent hover:bg-accent hover:text-accent-foreground bg-transparent"
-                        onClick={() => handleDeletePoll(poll.id)}
-                      >
-                        Delete
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-              </Card>
+              <div key={poll.id} className="flex gap-4 items-start">
+                <div className="flex-1">
+                  <PollCard
+                    poll={poll as any}
+                    onVote={() => setExpandedPollId(null)}
+                    expanded={expandedPollId === poll.id}
+                    onToggleExpand={(id) => setExpandedPollId(id)}
+                    onRequestResults={(id, title) => setResultsPoll({ id, title })}
+                  />
+                </div>
+                <div className="w-48 flex-shrink-0 flex flex-col gap-2">
+                  <Button size="sm" variant="ghost" onClick={() => setResultsPoll({ id: poll.id, title: poll.title })} className="flex items-center gap-2">
+                    <BarChart2 className="h-4 w-4" />
+                    <span className="hidden sm:inline">Results</span>
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => setEditingPoll(poll)} className="flex items-center gap-2">
+                    <Edit2 className="h-4 w-4" />
+                    <span className="hidden sm:inline">Edit</span>
+                  </Button>
+                  <Button size="sm" variant="destructive" onClick={() => handleDeletePoll(poll.id)} className="flex items-center gap-2">
+                    <Trash2 className="h-4 w-4" />
+                    <span className="hidden sm:inline">Delete</span>
+                  </Button>
+                </div>
+              </div>
             ))}
           </div>
         )}
@@ -166,6 +158,9 @@ export default function MyPollsPage() {
         {editingPoll && (
           <PollEditModal poll={editingPoll} onClose={() => setEditingPoll(null)} onPollUpdated={handlePollUpdated} />
         )}
+        {editingPoll && (
+          <PollEditModal poll={editingPoll} onClose={() => setEditingPoll(null)} onPollUpdated={handlePollUpdated} />
+        )}
 
         {viewingResultsPoll && (
           <PollResultsModal
@@ -173,6 +168,10 @@ export default function MyPollsPage() {
             pollTitle={viewingResultsPoll.title}
             onClose={() => setViewingResultsPoll(null)}
           />
+        )}
+
+        {resultsPoll && (
+          <PollResultsModal pollId={resultsPoll.id} pollTitle={resultsPoll.title} onClose={() => setResultsPoll(null)} />
         )}
       </div>
     </div>

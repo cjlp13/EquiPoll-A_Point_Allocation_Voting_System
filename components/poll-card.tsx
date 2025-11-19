@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
+import { User, ThumbsUp, BarChart2 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -21,10 +22,12 @@ interface Poll {
 interface PollCardProps {
   poll: Poll
   onVote: () => void
+  expanded?: boolean
+  onToggleExpand?: (pollId: string | null) => void
+  onRequestResults?: (pollId: string, pollTitle: string) => void
 }
 
-export function PollCard({ poll, onVote }: PollCardProps) {
-  const [showVoting, setShowVoting] = useState(false)
+export function PollCard({ poll, onVote, expanded = false, onToggleExpand, onRequestResults }: PollCardProps) {
   const [showResults, setShowResults] = useState(false)
   const [hasVoted, setHasVoted] = useState(false)
   const [user, setUser] = useState<any>(null)
@@ -57,59 +60,105 @@ export function PollCard({ poll, onVote }: PollCardProps) {
   }, [poll.id, supabase])
 
   const handleVoteComplete = () => {
-    setShowVoting(false)
-    setHasVoted(true)
+    // Collapse after voting and notify parent
     onVote()
+    if (onToggleExpand) onToggleExpand(null)
+    setHasVoted(true)
   }
 
-  if (showVoting) {
-    return (
-    <PointAllocationVoting
-      poll={poll}
-      onClose={() => setShowVoting(false)}
-      onVoteComplete={handleVoteComplete}
-    />
-    )
-  }
+  const contentRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    const el = contentRef.current
+    if (!el) return
+    // Measure content height for smooth animation
+    if (expanded) {
+      // Use a small delay to ensure content is rendered
+      const timer = setTimeout(() => {
+        const full = el.scrollHeight
+        el.style.maxHeight = `${full}px`
+        el.style.opacity = '1'
+      }, 50)
+      return () => clearTimeout(timer)
+    } else {
+      el.style.maxHeight = '0px'
+      el.style.opacity = '0'
+    }
+  }, [expanded])
+
+  // Also remeasure when the voting component renders to account for async loading
+  useEffect(() => {
+    if (!expanded) return
+    const el = contentRef.current
+    if (!el) return
+    
+    const observer = new ResizeObserver(() => {
+      const full = el.scrollHeight
+      el.style.maxHeight = `${full}px`
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [expanded])
 
   return (
     <>
-      <Card className="bg-card border-border hover:shadow-lg transition-shadow h-full flex flex-col">
+      <Card className={`bg-card border-border transition-shadow h-full flex flex-col rounded-lg ${expanded ? 'shadow-2xl' : 'hover:shadow-lg'}`}>
         <CardHeader>
-          <CardTitle className="text-xl">{poll.title}</CardTitle>
-          <CardDescription>by {poll.profiles?.full_name || "Anonymous"}</CardDescription>
+          <div className="flex justify-between items-start w-full">
+            <div>
+              <CardTitle className="text-xl">{poll.title}</CardTitle>
+              <CardDescription className="text-sm flex items-center gap-2"><User className="h-4 w-4 text-muted-foreground" /> <span>by {poll.profiles?.full_name || "Anonymous"}</span></CardDescription>
+            </div>
+          </div>
         </CardHeader>
+
         <CardContent className="flex-1 flex flex-col justify-between">
           <p className="text-sm text-muted-foreground mb-4">{poll.description || "No description provided"}</p>
-          <div className="flex gap-2">
+
+          <div
+            ref={contentRef}
+            className="mb-4 overflow-hidden transition-[max-height,opacity] duration-300"
+            style={{ maxHeight: 0, opacity: 0 }}
+            aria-hidden={!expanded}
+          >
+            <div className="pt-2">
+              {expanded && (
+                <PointAllocationVoting poll={poll} onClose={() => onToggleExpand && onToggleExpand(null)} onVoteComplete={handleVoteComplete} />
+              )}
+            </div>
+          </div>
+
+          <div className="flex gap-2 mt-2">
             <Button
-              onClick={() => setShowVoting(true)}
+              onClick={() => onToggleExpand && onToggleExpand(expanded ? null : String(poll.id))}
               className={`flex-1 ${
                 hasVoted
-                  ? "bg-muted text-muted-foreground hover:bg-muted"
-                  : "bg-accent text-accent-foreground hover:opacity-90"
+                  ? "bg-muted text-muted-foreground"
+                  : "bg-primary text-primary-foreground"
               }`}
               disabled={hasVoted}
             >
-              {hasVoted ? "Already Voted" : "Vote Now"}
+              <div className="flex items-center justify-center gap-2">
+                <ThumbsUp className="h-4 w-4" />
+                <span>{hasVoted ? "Already Voted" : (expanded ? 'Continue Voting' : 'Vote Now')}</span>
+              </div>
             </Button>
             <Button
-              onClick={() => setShowResults(true)}
+              onClick={() => onRequestResults ? onRequestResults(poll.id, poll.title) : setShowResults(true)}
               variant="outline"
-              className="flex-1 border-border text-foreground hover:bg-muted bg-transparent"
+              className="flex-1"
             >
-              View Results
+              <div className="flex items-center justify-center gap-2">
+                <BarChart2 className="h-4 w-4" />
+                <span>View Results</span>
+              </div>
             </Button>
           </div>
         </CardContent>
       </Card>
 
       {showResults && (
-        <PollResultsModal
-          pollId={poll.id}
-          pollTitle={poll.title}
-          onClose={() => setShowResults(false)}
-        />
+        <PollResultsModal pollId={poll.id} pollTitle={poll.title} onClose={() => setShowResults(false)} />
       )}
     </>
   )

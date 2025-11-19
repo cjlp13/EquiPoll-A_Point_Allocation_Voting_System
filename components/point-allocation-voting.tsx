@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { X, CheckCircle } from "lucide-react"
 
 interface Choice {
   id: string
@@ -64,7 +65,10 @@ export function PointAllocationVoting({ poll, onClose, onVoteComplete }: PointAl
   const remainingPoints = TOTAL_POINTS - totalAllocated
 
   const handleAllocationChange = (choiceId: string, value: number) => {
-    const newValue = Math.max(0, Math.min(value, TOTAL_POINTS))
+    // Clamp value to current allocation + remaining points (can't go over 100 total)
+    const currentValue = allocation[choiceId] || 0
+    const maxForThisChoice = currentValue + remainingPoints
+    const newValue = Math.max(0, Math.min(value, maxForThisChoice))
     setAllocation((prev) => ({
       ...prev,
       [choiceId]: newValue,
@@ -110,7 +114,7 @@ export function PointAllocationVoting({ poll, onClose, onVoteComplete }: PointAl
 
   if (loading) {
     return (
-      <Card className="bg-card border-border">
+      <Card className="bg-card border-border rounded-lg shadow-lg">
         <CardHeader>
           <p className="text-muted-foreground">Loading options...</p>
         </CardHeader>
@@ -119,63 +123,78 @@ export function PointAllocationVoting({ poll, onClose, onVoteComplete }: PointAl
   }
 
   return (
-    <Card className="bg-card border-border">
+    <Card className="bg-card border-border rounded-lg shadow-lg">
       <CardHeader>
-        <CardTitle>{poll.title}</CardTitle>
-        <CardDescription>Allocate your 100 points across the options</CardDescription>
+        <CardTitle className="text-xl font-semibold">{poll.title}</CardTitle>
+        <CardDescription>Allocate your {TOTAL_POINTS} points across the options</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {choices.map((choice) => (
-          <div key={choice.id} className="space-y-2">
-            <div className="flex justify-between items-center">
-              <label className="text-sm font-medium">{choice.choice_text}</label>
-              <span className="text-sm font-semibold text-primary">{allocation[choice.id]} pts</span>
+        {choices.map((choice) => {
+          const currentValue = allocation[choice.id] || 0
+          const maxForThisChoice = currentValue + remainingPoints
+          return (
+            <div key={choice.id} className="space-y-2">
+              <div className="flex justify-between items-center">
+                <label className="text-sm font-medium text-foreground">{choice.choice_text}</label>
+                <span className="text-sm font-semibold text-primary">{currentValue} pts</span>
+              </div>
+              <div className="flex gap-3 items-center">
+                <div className="flex-1">
+                  <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                    <span>0</span>
+                    <span>{maxForThisChoice}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max={maxForThisChoice}
+                    value={currentValue}
+                    onChange={(e) => handleAllocationChange(choice.id, Number.parseInt(e.target.value))}
+                    disabled={remainingPoints === 0 && currentValue === 0}
+                    style={{
+                      background: `linear-gradient(to right, #8b1d1d 0%, #8b1d1d ${maxForThisChoice > 0 ? (currentValue / maxForThisChoice) * 100 : 0}%, #e5e7eb ${maxForThisChoice > 0 ? (currentValue / maxForThisChoice) * 100 : 0}%, #e5e7eb 100%)`
+                    }}
+                    className="w-full h-2 rounded-lg appearance-none bg-muted/40 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  />
+                </div>
+                <input
+                  type="number"
+                  min="0"
+                  max={maxForThisChoice}
+                  value={currentValue}
+                  onChange={(e) => handleAllocationChange(choice.id, Number.parseInt(e.target.value) || 0)}
+                  disabled={remainingPoints === 0 && currentValue === 0}
+                  className="w-20 px-2 py-1 border border-border rounded bg-input text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+              </div>
             </div>
-            <div className="flex gap-2 items-center">
-              <input
-                type="range"
-                min="0"
-                max={TOTAL_POINTS}
-                value={allocation[choice.id]}
-                onChange={(e) => handleAllocationChange(choice.id, Number.parseInt(e.target.value))}
-                className="flex-1"
-              />
-              <input
-                type="number"
-                min="0"
-                max={TOTAL_POINTS}
-                value={allocation[choice.id]}
-                onChange={(e) => handleAllocationChange(choice.id, Number.parseInt(e.target.value) || 0)}
-                className="w-16 px-2 py-1 border border-border rounded bg-input"
-              />
-            </div>
-          </div>
-        ))}
+          )
+        })}
 
         <div className="pt-4 border-t border-border">
           <div className="flex justify-between items-center mb-4">
-            <span className="font-semibold">Points Remaining:</span>
-            <span className={`text-lg font-bold ${remainingPoints === 0 ? "text-secondary" : "text-muted-foreground"}`}>
+            <span className="font-semibold text-foreground">Points Remaining:</span>
+            <span className={`text-lg font-bold ${remainingPoints === 0 ? "text-primary" : "text-muted-foreground"}`}>
               {remainingPoints}
             </span>
           </div>
 
-          {error && <p className="text-sm text-accent mb-4">{error}</p>}
+          {remainingPoints !== 0 && (
+            <p className="text-sm text-muted-foreground mb-4">
+              Allocate all {TOTAL_POINTS} points to submit your vote
+            </p>
+          )}
 
-          <div className="flex gap-2">
-            <Button
-              onClick={onClose}
-              variant="outline"
-              className="flex-1 border-border text-foreground hover:bg-muted bg-transparent"
-            >
-              Cancel
+          {error && <p className="text-sm text-destructive mb-4">{error}</p>}
+
+          <div className="flex gap-3">
+            <Button onClick={onClose} variant="outline" className="flex-1 flex items-center justify-center gap-2">
+              <X className="h-4 w-4" />
+              <span>Cancel</span>
             </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={submitting || remainingPoints !== 0}
-              className="flex-1 bg-accent text-accent-foreground hover:opacity-90"
-            >
-              {submitting ? "Submitting..." : "Submit Vote"}
+            <Button onClick={handleSubmit} disabled={submitting || remainingPoints !== 0} className="flex-1 flex items-center justify-center gap-2" variant="default">
+              <CheckCircle className="h-4 w-4" />
+              <span>{submitting ? "Submitting..." : "Submit Vote"}</span>
             </Button>
           </div>
         </div>

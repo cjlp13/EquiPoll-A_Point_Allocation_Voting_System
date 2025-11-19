@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { X } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 interface Poll {
@@ -110,8 +111,8 @@ export function PollEditModal({ poll, onClose, onPollUpdated }: PollEditModalPro
 
   if (fetching) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <Card className="bg-card border-border w-full max-w-md">
+      <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50">
+        <Card className="bg-card border-border w-full max-w-md rounded-lg shadow-xl">
           <CardContent className="pt-6">
             <p className="text-muted-foreground">Loading choices...</p>
           </CardContent>
@@ -121,63 +122,51 @@ export function PollEditModal({ poll, onClose, onPollUpdated }: PollEditModalPro
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <Card className="bg-card border-border w-full max-w-md max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50">
+      <Card className="bg-card border-border w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl shadow-2xl">
         <CardHeader>
-          <CardTitle>Edit Poll</CardTitle>
-          <CardDescription>Update your poll details and choices</CardDescription>
+          <div className="flex items-start justify-between w-full">
+            <div>
+              <CardTitle className="text-lg font-semibold">Edit Poll</CardTitle>
+              <CardDescription className="text-sm text-muted-foreground">Update your poll details and choices</CardDescription>
+            </div>
+            <div>
+              <Button size="sm" variant="ghost" onClick={onClose} className="-mr-2">
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="title">Poll Title</Label>
-              <Input
-                id="title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="bg-input border-border"
-                required
-              />
+              <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} className="bg-input border-border text-foreground" required />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
-              <Input
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="bg-input border-border"
-              />
+              <Input id="description" value={description} onChange={(e) => setDescription(e.target.value)} className="bg-input border-border text-foreground" />
             </div>
 
             <div className="space-y-2">
               <Label>Choices</Label>
-              {choices.map((choice) => (
-                <Input
-                  key={choice.id}
-                  value={choice.choice_text}
-                  onChange={(e) => updateChoiceText(choice.id, e.target.value)}
-                  className="bg-input border-border"
-                />
-              ))}
+              <div className="space-y-2">
+                {choices.map((choice) => (
+                  <div key={choice.id} className="flex gap-2 items-center">
+                    <Input value={choice.choice_text} onChange={(e) => updateChoiceText(choice.id, e.target.value)} className="bg-input border-border text-foreground" />
+                  </div>
+                ))}
+              </div>
             </div>
 
-            {error && <p className="text-sm text-accent">{error}</p>}
+            {error && <p className="text-sm text-destructive">{error}</p>}
 
-            <div className="flex gap-2 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                className="flex-1 border-border text-foreground hover:bg-muted bg-transparent"
-                onClick={onClose}
-              >
+            <div className="flex gap-3 pt-4">
+              <Button type="button" variant="ghost" className="flex-1" onClick={onClose}>
                 Cancel
               </Button>
-              <Button
-                type="submit"
-                className="flex-1 bg-primary text-primary-foreground hover:opacity-90"
-                disabled={loading}
-              >
+              <Button type="submit" className="flex-1 bg-primary text-primary-foreground hover:opacity-95" disabled={loading}>
                 {loading ? "Saving..." : "Save Changes"}
               </Button>
             </div>

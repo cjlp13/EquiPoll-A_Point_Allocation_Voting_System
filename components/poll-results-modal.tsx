@@ -13,7 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from "recharts"
-import { X } from "lucide-react"
+import { X, Users, TrendingUp, BarChart3 } from "lucide-react"
 
 interface Choice {
   id: string
@@ -114,7 +114,7 @@ export function PollResultsModal({ pollId, pollTitle, onClose }: PollResultsModa
   }, [pollId, supabase])
 
   const getBarColor = (index: number) => {
-    const colors = ["#a78bfa", "#7bae7f", "#de354c", "#667eea", "#764ba2"]
+    const colors = ["#8b1d1d", "#9e3b36", "#b86b66", "#7a1a18", "#5f1514"]
     return colors[index % colors.length]
   }
 
@@ -128,8 +128,8 @@ export function PollResultsModal({ pollId, pollTitle, onClose }: PollResultsModa
 
   if (loading) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <Card className="bg-card border-border w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+      <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50">
+        <Card className="bg-card border-border w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-lg shadow-xl">
           <CardContent className="pt-6">
             <p className="text-muted-foreground">Loading results...</p>
           </CardContent>
@@ -145,20 +145,15 @@ export function PollResultsModal({ pollId, pollTitle, onClose }: PollResultsModa
   }))
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <Card className="bg-card border-border w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50">
+      <Card className="bg-card border-border w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-lg shadow-xl">
         <CardHeader>
           <div className="flex justify-between items-start">
             <div>
-              <CardTitle className="text-2xl">{pollTitle}</CardTitle>
+              <CardTitle className="text-2xl font-semibold">{pollTitle}</CardTitle>
               <CardDescription>Poll Results</CardDescription>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="text-foreground hover:bg-muted"
-            >
+            <Button variant="ghost" size="icon" onClick={onClose} className="text-foreground hover:bg-muted/60">
               <X className="h-4 w-4" />
             </Button>
           </div>
@@ -166,16 +161,22 @@ export function PollResultsModal({ pollId, pollTitle, onClose }: PollResultsModa
         <CardContent className="space-y-6">
           {/* Summary Stats */}
           <div className="grid grid-cols-2 gap-4">
-            <Card className="bg-muted border-border">
+            <Card className="bg-muted border-border rounded-md">
               <CardHeader className="pb-2">
-                <CardDescription>Total Voters</CardDescription>
-                <CardTitle className="text-3xl">{totalVoters}</CardTitle>
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-primary" />
+                  <CardDescription>Total Voters</CardDescription>
+                </div>
+                <CardTitle className="text-3xl text-primary">{totalVoters}</CardTitle>
               </CardHeader>
             </Card>
-            <Card className="bg-muted border-border">
+            <Card className="bg-muted border-border rounded-md">
               <CardHeader className="pb-2">
-                <CardDescription>Consensus Score</CardDescription>
-                <CardTitle className="text-3xl">{consensusScore}%</CardTitle>
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-primary" />
+                  <CardDescription>Consensus Score</CardDescription>
+                </div>
+                <CardTitle className="text-3xl text-primary">{consensusScore}%</CardTitle>
                 <p className="text-sm text-muted-foreground">{getConsensusLabel(consensusScore)}</p>
               </CardHeader>
             </Card>
@@ -183,19 +184,16 @@ export function PollResultsModal({ pollId, pollTitle, onClose }: PollResultsModa
 
           {/* Bar Chart */}
           <div>
-            <h3 className="text-lg font-semibold mb-4">Point Distribution</h3>
+            <div className="flex items-center gap-2 mb-4">
+              <BarChart3 className="h-5 w-5 text-primary" />
+              <h3 className="text-lg font-semibold">Point Distribution</h3>
+            </div>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="name" 
-                  angle={-45} 
-                  textAnchor="end" 
-                  height={100}
-                  interval={0}
-                />
+                <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} interval={0} />
                 <YAxis />
-                <Tooltip 
+                <Tooltip
                   content={({ active, payload }) => {
                     if (active && payload && payload.length) {
                       return (
@@ -209,7 +207,7 @@ export function PollResultsModal({ pollId, pollTitle, onClose }: PollResultsModa
                   }}
                 />
                 <Legend />
-                <Bar dataKey="points" fill="#a78bfa" name="Total Points">
+                <Bar dataKey="points" fill="#8b1d1d" name="Total Points">
                   {chartData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={getBarColor(index)} />
                   ))}
@@ -220,7 +218,10 @@ export function PollResultsModal({ pollId, pollTitle, onClose }: PollResultsModa
 
           {/* Results Table */}
           <div>
-            <h3 className="text-lg font-semibold mb-4">Detailed Results</h3>
+            <div className="flex items-center gap-2 mb-4">
+              <BarChart3 className="h-5 w-5 text-primary" />
+              <h3 className="text-lg font-semibold">Detailed Results</h3>
+            </div>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -236,7 +237,7 @@ export function PollResultsModal({ pollId, pollTitle, onClose }: PollResultsModa
                   <TableRow key={choice.id}>
                     <TableCell className="font-medium">{index + 1}</TableCell>
                     <TableCell>{choice.choice_text}</TableCell>
-                    <TableCell className="text-right font-semibold">{choice.total_points.toFixed(2)}</TableCell>
+                    <TableCell className="text-right font-semibold text-primary">{choice.total_points.toFixed(2)}</TableCell>
                     <TableCell className="text-right">{choice.vote_count}</TableCell>
                     <TableCell className="text-right">
                       {choice.vote_count > 0 ? (choice.total_points / choice.vote_count).toFixed(2) : "0.00"}
@@ -248,7 +249,7 @@ export function PollResultsModal({ pollId, pollTitle, onClose }: PollResultsModa
           </div>
 
           {/* Consensus Explanation */}
-          <Card className="bg-muted border-border">
+          <Card className="bg-muted border-border rounded-md">
             <CardHeader>
               <CardTitle className="text-sm">About Consensus Score</CardTitle>
             </CardHeader>
