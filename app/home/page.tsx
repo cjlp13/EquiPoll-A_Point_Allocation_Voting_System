@@ -21,12 +21,19 @@ interface Poll {
   }
 }
 
+interface Vote {
+  poll_id: string
+}
+
 export default function HomePage() {
   const [polls, setPolls] = useState<Poll[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedPollId, setExpandedPollId] = useState<string | null>(null)
   const [resultsPoll, setResultsPoll] = useState<{ id: string; title: string } | null>(null)
   const [user, setUser] = useState<any>(null)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [voteFilter, setVoteFilter] = useState<"all" | "voted" | "not-voted">("all")
+  const [votedPollIds, setVotedPollIds] = useState<Set<string>>(new Set())
   const router = useRouter()
   const supabase = createClient()
 
@@ -103,6 +110,17 @@ export default function HomePage() {
 
         console.log("Polls fetched successfully:", data)
         setPolls(data || [])
+
+        // Fetch voting data for current user
+        const { data: votes, error: votesError } = await supabase
+          .from("votes")
+          .select("poll_id")
+          .eq("user_id", user.id)
+
+        if (!votesError && votes) {
+          const votedIds = new Set((votes as Vote[]).map((vote) => vote.poll_id))
+          setVotedPollIds(votedIds)
+        }
       } catch (error) {
         // Log the caught error in multiple ways
         console.error("Caught error (type):", typeof error)
@@ -120,6 +138,24 @@ export default function HomePage() {
 
     fetchData()
   }, [supabase, router])
+
+  // Filter and search logic
+  const filteredPolls = polls.filter((poll) => {
+    // Search filter (case-insensitive)
+    const searchLower = searchQuery.toLowerCase()
+    const matchesSearch =
+      poll.title.toLowerCase().includes(searchLower) ||
+      (poll.profiles?.full_name?.toLowerCase().includes(searchLower) ?? false)
+
+    // Vote status filter
+    const hasVoted = votedPollIds.has(poll.id)
+    const matchesVoteFilter =
+      voteFilter === "all" ||
+      (voteFilter === "voted" && hasVoted) ||
+      (voteFilter === "not-voted" && !hasVoted)
+
+    return matchesSearch && matchesVoteFilter
+  })
 
   if (loading) {
     return (
@@ -154,18 +190,57 @@ export default function HomePage() {
           </div>
         </div>
 
-        <h2 className="text-2xl font-semibold mb-4 text-primary">All Polls</h2>
+        <div className="mb-6 space-y-4">
+          <h2 className="text-2xl font-semibold text-primary">All Polls</h2>
+          
+          {/* Search Input */}
+          <input
+            type="text"
+            placeholder="Search by poll title or creator..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+          />
 
-        {polls.length === 0 ? (
+          {/* Vote Status Filter */}
+          <div className="flex flex-wrap gap-2">
+            <span className="text-sm font-medium text-muted-foreground py-2">Filter:</span>
+            <Button
+              variant={voteFilter === "all" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setVoteFilter("all")}
+            >
+              All Polls
+            </Button>
+            <Button
+              variant={voteFilter === "voted" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setVoteFilter("voted")}
+            >
+              Voted
+            </Button>
+            <Button
+              variant={voteFilter === "not-voted" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setVoteFilter("not-voted")}
+            >
+              Not Voted
+            </Button>
+          </div>
+        </div>
+
+        {filteredPolls.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-muted-foreground mb-4">No polls yet. Be the first to create one!</p>
+            <p className="text-muted-foreground mb-4">
+              {searchQuery || voteFilter !== "all" ? "No polls match your search or filter." : "No polls yet. Be the first to create one!"}
+            </p>
             <Button>
               <Link href="/my-polls">Create a Poll</Link>
             </Button>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {polls.map((poll) => (
+            {filteredPolls.map((poll) => (
               <div key={poll.id} className="transform hover:-translate-y-1 transition">
                 <PollCard
                   poll={poll}
