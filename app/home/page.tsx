@@ -19,6 +19,7 @@ interface Poll {
   profiles?: {
     full_name: string
   }
+  voteCount?: number
 }
 
 interface Vote {
@@ -34,6 +35,7 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [voteFilter, setVoteFilter] = useState<"all" | "voted" | "not-voted">("all")
   const [votedPollIds, setVotedPollIds] = useState<Set<string>>(new Set())
+  const [sortBy, setSortBy] = useState<"recent" | "trending">("recent")
   const router = useRouter()
   const supabase = createClient()
 
@@ -109,7 +111,23 @@ export default function HomePage() {
         }
 
         console.log("Polls fetched successfully:", data)
-        setPolls(data || [])
+        
+        // Fetch vote counts for each poll
+        const pollsWithVotes = await Promise.all(
+          (data || []).map(async (poll: Poll) => {
+            const { count, error: countError } = await supabase
+              .from("votes")
+              .select("*", { count: "exact", head: true })
+              .eq("poll_id", poll.id)
+
+            return {
+              ...poll,
+              voteCount: !countError ? (count || 0) : 0,
+            }
+          })
+        )
+
+        setPolls(pollsWithVotes)
 
         // Fetch voting data for current user
         const { data: votes, error: votesError } = await supabase
@@ -140,7 +158,7 @@ export default function HomePage() {
   }, [supabase, router])
 
   // Filter and search logic
-  const filteredPolls = polls.filter((poll) => {
+  let filteredPolls = polls.filter((poll) => {
     // Search filter (case-insensitive)
     const searchLower = searchQuery.toLowerCase()
     const matchesSearch =
@@ -156,6 +174,11 @@ export default function HomePage() {
 
     return matchesSearch && matchesVoteFilter
   })
+
+  // Sort by trending or recent
+  if (sortBy === "trending") {
+    filteredPolls = [...filteredPolls].sort((a, b) => (b.voteCount || 0) - (a.voteCount || 0))
+  }
 
   if (loading) {
     return (
@@ -201,6 +224,25 @@ export default function HomePage() {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
           />
+
+          {/* Sort By */}
+          <div className="flex flex-wrap gap-2">
+            <span className="text-sm font-medium text-muted-foreground py-2">Sort:</span>
+            <Button
+              variant={sortBy === "recent" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSortBy("recent")}
+            >
+              Recent
+            </Button>
+            <Button
+              variant={sortBy === "trending" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSortBy("trending")}
+            >
+              Trending
+            </Button>
+          </div>
 
           {/* Vote Status Filter */}
           <div className="flex flex-wrap gap-2">
