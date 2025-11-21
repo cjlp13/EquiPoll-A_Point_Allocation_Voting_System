@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -22,6 +22,13 @@ export function PollCreationModal({ onClose, onPollCreated }: PollCreationModalP
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const supabase = createClient()
+
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [])
 
   const addChoice = () => {
     setChoices([...choices, ""])
@@ -93,9 +100,9 @@ export function PollCreationModal({ onClose, onPollCreated }: PollCreationModalP
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50">
-      <Card className="bg-card border-border w-full max-w-xl rounded-xl shadow-2xl">
-        <CardHeader>
+    <div className="fixed inset-0 bg-transparent backdrop-blur-sm flex items-center justify-center p-4 z-50">
+      <Card className="bg-card border-border w-full max-w-xl rounded-xl shadow-2xl max-h-[90vh] flex flex-col">
+        <CardHeader className="flex-shrink-0">
           <div className="flex items-start justify-between w-full">
             <div>
               <CardTitle className="text-lg font-semibold">Create New Poll</CardTitle>
@@ -108,7 +115,7 @@ export function PollCreationModal({ onClose, onPollCreated }: PollCreationModalP
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex-1 overflow-y-auto">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="title">Poll Title *</Label>

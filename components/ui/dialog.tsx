@@ -7,26 +7,44 @@ import { XIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 function Dialog({
+  open,
+  onOpenChange,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Root>) {
-  return <DialogPrimitive.Root data-slot="dialog" {...props} />
+  React.useEffect(() => {
+    if (open) {
+      document.body.style.overflow = 'hidden'
+      return () => {
+        document.body.style.overflow = ''
+      }
+    }
+  }, [open])
+
+  return (
+    <DialogPrimitive.Root
+      data-slot="dialog"
+      open={open}
+      onOpenChange={onOpenChange}
+      {...props}
+    />
+  )
 }
 
-function DialogTrigger({
-  ...props
-}: React.ComponentProps<typeof DialogPrimitive.Trigger>) {
+function DialogTrigger(
+  props: React.ComponentProps<typeof DialogPrimitive.Trigger>,
+) {
   return <DialogPrimitive.Trigger data-slot="dialog-trigger" {...props} />
 }
 
-function DialogPortal({
-  ...props
-}: React.ComponentProps<typeof DialogPrimitive.Portal>) {
+function DialogPortal(
+  props: React.ComponentProps<typeof DialogPrimitive.Portal>,
+) {
   return <DialogPrimitive.Portal data-slot="dialog-portal" {...props} />
 }
 
-function DialogClose({
-  ...props
-}: React.ComponentProps<typeof DialogPrimitive.Close>) {
+function DialogClose(
+  props: React.ComponentProps<typeof DialogPrimitive.Close>,
+) {
   return <DialogPrimitive.Close data-slot="dialog-close" {...props} />
 }
 
@@ -38,7 +56,7 @@ function DialogOverlay({
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
       className={cn(
-        'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50',
+        'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-transparent backdrop-blur-sm',
         className,
       )}
       {...props}
@@ -55,7 +73,7 @@ function DialogContent({
   showCloseButton?: boolean
 }) {
   return (
-    <DialogPortal data-slot="dialog-portal">
+    <DialogPortal>
       <DialogOverlay />
       <DialogPrimitive.Content
         data-slot="dialog-content"
@@ -66,6 +84,7 @@ function DialogContent({
         {...props}
       >
         {children}
+
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
@@ -80,7 +99,10 @@ function DialogContent({
   )
 }
 
-function DialogHeader({ className, ...props }: React.ComponentProps<'div'>) {
+function DialogHeader({
+  className,
+  ...props
+}: React.ComponentProps<'div'>) {
   return (
     <div
       data-slot="dialog-header"
@@ -90,7 +112,10 @@ function DialogHeader({ className, ...props }: React.ComponentProps<'div'>) {
   )
 }
 
-function DialogFooter({ className, ...props }: React.ComponentProps<'div'>) {
+function DialogFooter({
+  className,
+  ...props
+}: React.ComponentProps<'div'>) {
   return (
     <div
       data-slot="dialog-footer"
@@ -131,13 +156,13 @@ function DialogDescription({
 
 export {
   Dialog,
+  DialogPortal,      // <-- IMPORTANT EXPORT
+  DialogTrigger,
   DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogOverlay,
-  DialogPortal,
   DialogTitle,
-  DialogTrigger,
 }

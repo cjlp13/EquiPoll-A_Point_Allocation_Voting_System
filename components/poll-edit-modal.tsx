@@ -38,6 +38,13 @@ export function PollEditModal({ poll, onClose, onPollUpdated }: PollEditModalPro
   const supabase = createClient()
 
   useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [])
+
+  useEffect(() => {
     const fetchChoices = async () => {
       try {
         const { data, error } = await supabase
@@ -111,7 +118,7 @@ export function PollEditModal({ poll, onClose, onPollUpdated }: PollEditModalPro
 
   if (fetching) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50">
+      <div className="fixed inset-0 bg-transparent backdrop-blur-sm flex items-center justify-center p-4 z-50">
         <Card className="bg-card border-border w-full max-w-md rounded-lg shadow-xl">
           <CardContent className="pt-6">
             <p className="text-muted-foreground">Loading choices...</p>
@@ -122,9 +129,9 @@ export function PollEditModal({ poll, onClose, onPollUpdated }: PollEditModalPro
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50">
-      <Card className="bg-card border-border w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl shadow-2xl">
-        <CardHeader>
+    <div className="fixed inset-0 bg-transparent backdrop-blur-sm flex items-center justify-center p-4 z-50">
+      <Card className="bg-card border-border w-full max-w-lg max-h-[90vh] flex flex-col rounded-xl shadow-2xl">
+        <CardHeader className="flex-shrink-0">
           <div className="flex items-start justify-between w-full">
             <div>
               <CardTitle className="text-lg font-semibold">Edit Poll</CardTitle>
@@ -137,7 +144,7 @@ export function PollEditModal({ poll, onClose, onPollUpdated }: PollEditModalPro
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex-1 overflow-y-auto">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="title">Poll Title</Label>

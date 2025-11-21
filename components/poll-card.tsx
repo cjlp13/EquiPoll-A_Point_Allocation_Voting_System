@@ -25,12 +25,14 @@ interface PollCardProps {
   expanded?: boolean
   onToggleExpand?: (pollId: string | null) => void
   onRequestResults?: (pollId: string, pollTitle: string) => void
+  onRequestVote?: (poll: Poll) => void
 }
 
-export function PollCard({ poll, onVote, expanded = false, onToggleExpand, onRequestResults }: PollCardProps) {
+export function PollCard({ poll, onVote, expanded = false, onToggleExpand, onRequestResults, onRequestVote }: PollCardProps) {
   const [showResults, setShowResults] = useState(false)
   const [hasVoted, setHasVoted] = useState(false)
   const [user, setUser] = useState<any>(null)
+  const [choicesCount, setChoicesCount] = useState<number | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -57,6 +59,20 @@ export function PollCard({ poll, onVote, expanded = false, onToggleExpand, onReq
     }
 
     checkUserAndVote()
+  }, [poll.id, supabase])
+
+  useEffect(() => {
+    // fetch choices count to add some metadata to the card
+    const fetchChoicesCount = async () => {
+      try {
+        const { data } = await supabase.from("poll_choices").select("id").eq("poll_id", poll.id)
+        setChoicesCount(data ? data.length : 0)
+      } catch (err) {
+        console.error("Error fetching choices count:", err)
+        setChoicesCount(0)
+      }
+    }
+    fetchChoicesCount()
   }, [poll.id, supabase])
 
   const handleVoteComplete = () => {
@@ -105,9 +121,12 @@ export function PollCard({ poll, onVote, expanded = false, onToggleExpand, onReq
       <Card className={`bg-card border-border transition-shadow h-full flex flex-col rounded-lg ${expanded ? 'shadow-2xl' : 'hover:shadow-lg'}`}>
         <CardHeader>
           <div className="flex justify-between items-start w-full">
-            <div>
+            <div className="flex-1">
               <CardTitle className="text-xl">{poll.title}</CardTitle>
-              <CardDescription className="text-sm flex items-center gap-2"><User className="h-4 w-4 text-muted-foreground" /> <span>by {poll.profiles?.full_name || "Anonymous"}</span></CardDescription>
+              <CardDescription className="text-sm flex flex-col gap-1">
+                <span className="flex items-center gap-2"><User className="h-4 w-4 text-muted-foreground" /> <span>by {poll.profiles?.full_name || "Anonymous"}</span></span>
+                <span className="text-xs text-muted-foreground">Created {poll.created_at ? new Date(poll.created_at).toLocaleDateString() : '—'}</span>
+              </CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -130,7 +149,13 @@ export function PollCard({ poll, onVote, expanded = false, onToggleExpand, onReq
 
           <div className="flex gap-2 mt-2">
             <Button
-              onClick={() => onToggleExpand && onToggleExpand(expanded ? null : String(poll.id))}
+              onClick={() => {
+                if (onRequestVote) {
+                  onRequestVote(poll)
+                } else {
+                  onToggleExpand && onToggleExpand(expanded ? null : String(poll.id))
+                }
+              }}
               className={`flex-1 ${
                 hasVoted
                   ? "bg-muted text-muted-foreground"
