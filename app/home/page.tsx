@@ -16,9 +16,8 @@ interface Poll {
   description: string
   user_id: string
   created_at: string
-  profiles?: {
-    full_name: string
-  }
+  profiles?: { full_name: string }
+  voteCount?: number
 }
 
 export default function HomePage() {
@@ -29,37 +28,15 @@ export default function HomePage() {
   const [votingPoll, setVotingPoll] = useState<{ id: string; title: string; description?: string } | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [user, setUser] = useState<any>(null)
+
+  // NEW states for search + filter + sorting
+  const [searchQuery, setSearchQuery] = useState("")
+  const [voteFilter, setVoteFilter] = useState<"all" | "voted" | "not-voted">("all")
+  const [votedPollIds, setVotedPollIds] = useState<Set<string>>(new Set())
+  const [sortBy, setSortBy] = useState<"recent" | "trending">("recent")
+
   const router = useRouter()
   const supabase = createClient()
-
-  // useEffect(() => {
-  //   const fetchData = async () => {
-  //     try {
-  //       const {
-  //         data: { user },
-  //       } = await supabase.auth.getUser()
-  //       if (!user) {
-  //         router.push("/auth/login")
-  //         return
-  //       }
-  //       setUser(user)
-
-  //       const { data, error } = await supabase
-  //         .from("polls")
-  //         .select("*, profiles(full_name)")
-  //         .order("created_at", { ascending: false })
-
-  //       if (error) throw error
-  //       setPolls(data || [])
-  //     } catch (error) {
-  //       console.error("Error fetching polls:", error)
-  //     } finally {
-  //       setLoading(false)
-  //     }
-  //   }
-
-  //   fetchData()
-  // }, [supabase, router])
 
   useEffect(() => {
     const fetchData = async () => {
@@ -67,15 +44,15 @@ export default function HomePage() {
         const {
           data: { user },
         } = await supabase.auth.getUser()
-        
+
         if (!user) {
           router.push("/auth/login")
           return
         }
+
         setUser(user)
 
-        console.log("Fetching polls for user:", user.id)
-
+        // Fetch polls
         const { data, error } = await supabase
           .from("polls")
           .select(`
@@ -88,33 +65,31 @@ export default function HomePage() {
           `)
           .order("created_at", { ascending: false })
 
-        // Log everything we get back
-        console.log("Raw response:", { data, error })
+        if (error) return
 
-        if (error) {
-          // Log the error as a string to see its actual content
-          console.error("Supabase error (stringified):", JSON.stringify(error, null, 2))
-          console.error("Error message:", error.message)
-          console.error("Error details:", error.details)
-          console.error("Error hint:", error.hint)
-          console.error("Error code:", error.code)
-          
-          // Don't throw, just return to see what happens
-          return
-        }
+        // Fetch vote counts (trending sort)
+        const pollsWithVotes = await Promise.all(
+          (data || []).map(async (poll: Poll) => {
+            const { count } = await supabase
+              .from("votes")
+              .select("*", { count: "exact", head: true })
+              .eq("poll_id", poll.id)
 
-        console.log("Polls fetched successfully:", data)
-        setPolls(data || [])
+            return { ...poll, voteCount: count || 0 }
+          })
+        )
+
+        setPolls(pollsWithVotes)
+
+        // Fetch user's votes
+        const { data: votes } = await supabase
+          .from("votes")
+          .select("poll_id")
+          .eq("user_id", user.id)
+
+        setVotedPollIds(new Set(votes?.map((v) => v.poll_id) || []))
       } catch (error) {
-        // Log the caught error in multiple ways
-        console.error("Caught error (type):", typeof error)
-        console.error("Caught error (stringified):", JSON.stringify(error, null, 2))
-        console.error("Caught error (raw):", error)
-        
-        if (error instanceof Error) {
-          console.error("Error message:", error.message)
-          console.error("Error stack:", error.stack)
-        }
+        console.error(error)
       } finally {
         setLoading(false)
       }
@@ -122,6 +97,27 @@ export default function HomePage() {
 
     fetchData()
   }, [supabase, router])
+
+  // --- SEARCH + FILTER + SORT LOGIC ---
+  let filteredPolls = polls.filter((poll) => {
+    const searchLower = searchQuery.toLowerCase()
+    const matchesSearch =
+      poll.title.toLowerCase().includes(searchLower) ||
+      poll.description?.toLowerCase().includes(searchLower) ||
+      poll.profiles?.full_name?.toLowerCase().includes(searchLower)
+
+    const hasVoted = votedPollIds.has(poll.id)
+    const matchesVoteFilter =
+      voteFilter === "all" ||
+      (voteFilter === "voted" && hasVoted) ||
+      (voteFilter === "not-voted" && !hasVoted)
+
+    return matchesSearch && matchesVoteFilter
+  })
+
+  if (sortBy === "trending") {
+    filteredPolls = [...filteredPolls].sort((a, b) => (b.voteCount || 0) - (a.voteCount || 0))
+  }
 
   if (loading) {
     return (
@@ -143,54 +139,72 @@ export default function HomePage() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h1 className="text-3xl font-extrabold mb-1 text-primary">Welcome to EquiPoll</h1>
-              <p className="text-sm text-muted-foreground">Create balanced, point-allocation polls and see clear results — fair, equitable decision-making for groups.</p>
+              <p className="text-sm text-muted-foreground">
+                Create balanced, point-allocation polls and see clear results.
+              </p>
             </div>
+
             <div className="flex gap-2">
-              <Button variant="default" onClick={() => setShowCreateModal(true)}>
-                Create a Poll
-              </Button>
-              <Button variant="ghost" onClick={() => router.push("/my-polls")}>
-                My Polls
-              </Button>
+              <Button onClick={() => setShowCreateModal(true)}>Create a Poll</Button>
+              <Button variant="ghost" onClick={() => router.push("/my-polls")}>My Polls</Button>
             </div>
+          </div>
+        </div>
+
+        {/* SEARCH / SORT / FILTER */}
+        <div className="mb-6 flex flex-col gap-4">
+          {/* Search */}
+          <input
+            type="text"
+            placeholder="Search polls..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full px-4 py-2 border border-border rounded-lg bg-background"
+          />
+
+          {/* Sort */}
+          <div className="flex gap-2 items-center">
+            <span className="text-sm text-muted-foreground">Sort:</span>
+            <Button size="sm" variant={sortBy === "recent" ? "default" : "outline"} onClick={() => setSortBy("recent")}>Recent</Button>
+            <Button size="sm" variant={sortBy === "trending" ? "default" : "outline"} onClick={() => setSortBy("trending")}>Trending</Button>
+          </div>
+
+          {/* Filter */}
+          <div className="flex gap-2 items-center">
+            <span className="text-sm text-muted-foreground">Filter:</span>
+            <Button size="sm" variant={voteFilter === "all" ? "default" : "outline"} onClick={() => setVoteFilter("all")}>All</Button>
+            <Button size="sm" variant={voteFilter === "voted" ? "default" : "outline"} onClick={() => setVoteFilter("voted")}>Voted</Button>
+            <Button size="sm" variant={voteFilter === "not-voted" ? "default" : "outline"} onClick={() => setVoteFilter("not-voted")}>Not Voted</Button>
           </div>
         </div>
 
         <h2 className="text-2xl font-semibold mb-4 text-primary">All Polls</h2>
 
-        {polls.length === 0 ? (
+        {filteredPolls.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-muted-foreground mb-4">No polls yet. Be the first to create one!</p>
-            <Button onClick={() => setShowCreateModal(true)}>
-              Create a Poll
-            </Button>
+            <p className="text-muted-foreground mb-4">No polls match your search or filters.</p>
+            <Button onClick={() => setShowCreateModal(true)}>Create a Poll</Button>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {polls.map((poll) => (
-              <div key={poll.id} className="transform hover:-translate-y-1 transition">
-                <PollCard
-                  poll={poll}
-                  onVote={() => setExpandedPollId(null)}
-                  expanded={expandedPollId === poll.id}
-                  onToggleExpand={(id) => setExpandedPollId(id)}
-                  onRequestVote={(p) => setVotingPoll({ id: p.id, title: p.title, description: p.description })}
-                  onRequestResults={(id, title) => setResultsPoll({ id, title })}
-                />
-              </div>
+            {filteredPolls.map((poll) => (
+              <PollCard
+                key={poll.id}
+                poll={poll}
+                expanded={expandedPollId === poll.id}
+                onToggleExpand={(id) => setExpandedPollId(id)}
+                onRequestVote={(p) => setVotingPoll({ id: p.id, title: p.title, description: p.description })}
+                onRequestResults={(id, title) => setResultsPoll({ id, title })}
+                onVote={() => setExpandedPollId(null)}
+              />
             ))}
           </div>
         )}
       </div>
-      {showCreateModal && (
-        <PollCreationModal onClose={() => setShowCreateModal(false)} onPollCreated={() => setShowCreateModal(false)} />
-      )}
-      {resultsPoll && (
-        <PollResultsModal pollId={resultsPoll.id} pollTitle={resultsPoll.title} onClose={() => setResultsPoll(null)} />
-      )}
-      {votingPoll && (
-        <PollVotingModal poll={votingPoll} onClose={() => setVotingPoll(null)} onVoteComplete={() => setExpandedPollId(null)} />
-      )}
+
+      {showCreateModal && <PollCreationModal onClose={() => setShowCreateModal(false)} onPollCreated={() => setShowCreateModal(false)} />}
+      {resultsPoll && <PollResultsModal pollId={resultsPoll.id} pollTitle={resultsPoll.title} onClose={() => setResultsPoll(null)} />}
+      {votingPoll && <PollVotingModal poll={votingPoll} onClose={() => setVotingPoll(null)} onVoteComplete={() => setExpandedPollId(null)} />}
     </div>
   )
 }
