@@ -10,6 +10,10 @@ import { PollCreationModal } from "@/components/poll-creation-modal"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 
+interface Vote {
+  poll_id: string
+}
+
 interface Poll {
   id: string
   title: string
@@ -18,6 +22,7 @@ interface Poll {
   created_at: string
   profiles?: { full_name: string }
   voteCount?: number
+  options?: { id: string; text: string }[]
 }
 
 export default function HomePage() {
@@ -25,7 +30,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true)
   const [expandedPollId, setExpandedPollId] = useState<string | null>(null)
   const [resultsPoll, setResultsPoll] = useState<{ id: string; title: string } | null>(null)
-  const [votingPoll, setVotingPoll] = useState<{ id: string; title: string; description?: string } | null>(null)
+  const [votingPoll, setVotingPoll] = useState<{ id: string; title: string; description?: string; options?: { id: string; text: string }[] } | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [user, setUser] = useState<any>(null)
 
@@ -87,7 +92,7 @@ export default function HomePage() {
           .select("poll_id")
           .eq("user_id", user.id)
 
-        setVotedPollIds(new Set(votes?.map((v) => v.poll_id) || []))
+        setVotedPollIds(new Set(votes?.map((v: Vote) => v.poll_id) || []))
       } catch (error) {
         console.error(error)
       } finally {
@@ -117,6 +122,25 @@ export default function HomePage() {
 
   if (sortBy === "trending") {
     filteredPolls = [...filteredPolls].sort((a, b) => (b.voteCount || 0) - (a.voteCount || 0))
+  }
+
+  const handleRequestVote = async (poll: Poll) => {
+    // Fetch poll options if not already loaded
+    if (!poll.options) {
+      const { data: options } = await supabase
+        .from("poll_options")
+        .select("id, text")
+        .eq("poll_id", poll.id)
+      
+      poll.options = options || []
+    }
+
+    setVotingPoll({ 
+      id: poll.id, 
+      title: poll.title, 
+      description: poll.description,
+      options: poll.options 
+    })
   }
 
   if (loading) {
@@ -193,7 +217,7 @@ export default function HomePage() {
                 poll={poll}
                 expanded={expandedPollId === poll.id}
                 onToggleExpand={(id) => setExpandedPollId(id)}
-                onRequestVote={(p) => setVotingPoll({ id: p.id, title: p.title, description: p.description })}
+                onRequestVote={(p) => handleRequestVote(p)}
                 onRequestResults={(id, title) => setResultsPoll({ id, title })}
                 onVote={() => setExpandedPollId(null)}
               />
@@ -204,7 +228,7 @@ export default function HomePage() {
 
       {showCreateModal && <PollCreationModal onClose={() => setShowCreateModal(false)} onPollCreated={() => setShowCreateModal(false)} />}
       {resultsPoll && <PollResultsModal pollId={resultsPoll.id} pollTitle={resultsPoll.title} onClose={() => setResultsPoll(null)} />}
-      {votingPoll && <PollVotingModal poll={votingPoll} onClose={() => setVotingPoll(null)} onVoteComplete={() => setExpandedPollId(null)} />}
+      {votingPoll && <PollVotingModal open={!!votingPoll} poll={votingPoll} onClose={() => setVotingPoll(null)} onVoteComplete={() => setExpandedPollId(null)} />}
     </div>
   )
 }

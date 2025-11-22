@@ -16,20 +16,21 @@ interface PollOption {
 }
 
 interface PollVotingModalProps {
-  open: boolean;
+  open?: boolean;
   onClose: () => void;
   poll: {
     id: string;
     title: string;
     description?: string;
-    options: PollOption[];
+    options?: PollOption[];
   };
-  onSubmit: (values: Record<string, number>) => void;
+  onSubmit?: (values: Record<string, number>) => void;
+  onVoteComplete?: () => void;
 }
 
-export default function PollVotingModal({ open, onClose, poll, onSubmit }: PollVotingModalProps) {
+export default function PollVotingModal({ open = true, onClose, poll, onSubmit, onVoteComplete }: PollVotingModalProps) {
   const initialValues: Record<string, number> = {};
-  poll.options.forEach((o) => (initialValues[o.id] = 0));
+  (poll.options || []).forEach((o) => (initialValues[o.id] = 0));
 
   const [values, setValues] = useState<Record<string, number>>(initialValues);
 
@@ -42,7 +43,8 @@ export default function PollVotingModal({ open, onClose, poll, onSubmit }: PollV
 
   const handleSubmit = () => {
     if (remaining !== 0) return;
-    onSubmit(values);
+    onSubmit?.(values);
+    onVoteComplete?.();
     onClose();
   };
 
@@ -67,7 +69,7 @@ export default function PollVotingModal({ open, onClose, poll, onSubmit }: PollV
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
-          {poll.options.map((opt) => (
+          {(poll.options || []).map((opt) => (
             <div key={opt.id} className="w-full p-4 rounded-xl border bg-card shadow-sm">
               <div className="flex justify-between mb-2">
                 <p className="font-medium">{opt.text}</p>
