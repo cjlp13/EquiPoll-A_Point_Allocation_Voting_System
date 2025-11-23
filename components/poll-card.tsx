@@ -132,7 +132,7 @@ export function PollCard({ poll, onVote, expanded = false, onToggleExpand, onReq
         </CardHeader>
 
         <CardContent className="flex-1 flex flex-col justify-between">
-          <p className="text-sm text-muted-foreground mb-4">{poll.description || "No description provided"}</p>
+          <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{poll.description || "No description provided"}</p>
 
           <div
             ref={contentRef}

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { Dialog, DialogContent } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { X } from "lucide-react"
 
@@ -59,6 +59,9 @@ export default function PollAllocationsModal({ pollId, pollTitle, onClose }: Pro
   return (
     <Dialog open={true} onOpenChange={(open) => { if (!open) onClose() }}>
       <DialogContent className="max-w-xl w-full max-h-[90vh] flex flex-col p-0 gap-0">
+        {/* Accessible title for screen readers */}
+        <DialogTitle className="sr-only">{pollTitle}</DialogTitle>
+
         {/* Fixed header */}
         <div className="px-6 py-4 border-b border-border flex-shrink-0">
           <h2 className="text-xl font-bold">{pollTitle}</h2>
