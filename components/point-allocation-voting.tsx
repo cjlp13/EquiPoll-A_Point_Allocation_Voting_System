@@ -106,8 +106,8 @@ export function PointAllocationVoting({ poll, onClose, onVoteComplete, hideContr
         if (error) throw error
 
         setChoices(data || [])
-        const initialAllocation = {}
-        ;(data || []).forEach((choice) => {
+        const initialAllocation: Record<string, number> = {}
+        ;(data || []).forEach((choice: Choice) => {
           initialAllocation[choice.id] = 0
         })
         setAllocation(initialAllocation)
@@ -262,8 +262,8 @@ export function usePointAllocationVoting(poll: Poll) {
         if (error) throw error
 
         setChoices(data || [])
-        const initialAllocation = {}
-        ;(data || []).forEach((choice) => {
+        const initialAllocation: Record<string, number> = {}
+        ;(data || []).forEach((choice: Choice) => {
           initialAllocation[choice.id] = 0
         })
         setAllocation(initialAllocation)

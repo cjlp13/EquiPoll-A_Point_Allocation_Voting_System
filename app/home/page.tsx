@@ -124,15 +124,19 @@ export default function HomePage() {
     filteredPolls = [...filteredPolls].sort((a, b) => (b.voteCount || 0) - (a.voteCount || 0))
   }
 
-  const handleRequestVote = async (poll: Poll) => {
+   const handleRequestVote = async (poll: Poll) => {
     // Fetch poll options if not already loaded
     if (!poll.options) {
       const { data: options } = await supabase
-        .from("poll_options")
-        .select("id, text")
+        .from("poll_choices")
+        .select("id, choice_text")
         .eq("poll_id", poll.id)
       
-      poll.options = options || []
+      // Map choice_text to text for consistency
+      poll.options = (options || []).map((opt: { id: string; choice_text: string }) => ({ 
+        id: opt.id, 
+        text: opt.choice_text 
+      }))
     }
 
     setVotingPoll({ 
