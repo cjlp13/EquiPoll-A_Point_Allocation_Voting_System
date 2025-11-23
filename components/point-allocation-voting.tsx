@@ -129,7 +129,7 @@ export function PointAllocationVoting({ poll, onClose, onVoteComplete, hideContr
     // Clamp value to current allocation + remaining points (can't go over 100 total)
     const currentValue = allocation[choiceId] || 0
     const maxForThisChoice = currentValue + remainingPoints
-    const newValue = Math.max(0, Math.min(value, maxForThisChoice))
+    const newValue = Math.max(0, Math.min(Math.floor(value), maxForThisChoice))
     setAllocation((prev) => ({
       ...prev,
       [choiceId]: newValue,

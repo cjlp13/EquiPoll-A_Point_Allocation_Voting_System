@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
+import { createClient } from "@/lib/supabase/client";
 
 interface PollOption {
   id: string;
@@ -28,24 +29,80 @@ interface PollVotingModalProps {
   onVoteComplete?: () => void;
 }
 
-export default function PollVotingModal({ open = true, onClose, poll, onSubmit, onVoteComplete }: PollVotingModalProps) {
+const TOTAL_POINTS = 100;
+
+export default function PollVotingModal({ 
+  open = true, 
+  onClose, 
+  poll, 
+  onSubmit, 
+  onVoteComplete 
+}: PollVotingModalProps) {
   const initialValues: Record<string, number> = {};
   (poll.options || []).forEach((o) => (initialValues[o.id] = 0));
 
   const [values, setValues] = useState<Record<string, number>>(initialValues);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const supabase = createClient();
 
   const total = Object.values(values).reduce((a, b) => a + b, 0);
-  const remaining = 100 - total;
+  const remaining = TOTAL_POINTS - total;
 
   const handleChange = (id: string, val: number) => {
-    setValues((prev) => ({ ...prev, [id]: val }));
+    // Clamp value to current allocation + remaining points (can't go over 100 total)
+    const currentValue = values[id] || 0;
+    const maxForThisChoice = currentValue + remaining;
+    const newValue = Math.max(0, Math.min(val, maxForThisChoice));
+    setValues((prev) => ({ ...prev, [id]: newValue }));
   };
 
-  const handleSubmit = () => {
-    if (remaining !== 0) return;
-    onSubmit?.(values);
-    onVoteComplete?.();
-    onClose();
+  const handleSubmit = async () => {
+    if (remaining !== 0) {
+      setError("Please allocate all 100 points");
+      return;
+    }
+
+    if (total === 0) {
+      setError("Please allocate at least 1 point");
+      return;
+    }
+
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      
+      if (!user) throw new Error("Not authenticated");
+
+      // Create votes array with only non-zero allocations
+      const votes = Object.entries(values)
+        .filter(([_, points]) => points > 0)
+        .map(([choiceId, points]) => ({
+          poll_id: poll.id,
+          user_id: user.id,
+          choice_id: choiceId,
+          points,
+        }));
+
+      // Insert votes into database
+      const { error: voteError } = await supabase.from("votes").insert(votes);
+
+      if (voteError) throw voteError;
+
+      // Call optional callbacks
+      onSubmit?.(values);
+      onVoteComplete?.();
+      onClose();
+    } catch (error) {
+      console.error("Error submitting vote:", error);
+      setError(error instanceof Error ? error.message : "Failed to submit vote");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
