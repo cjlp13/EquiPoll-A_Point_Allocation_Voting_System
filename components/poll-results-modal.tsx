@@ -151,11 +151,22 @@ export function PollResultsModal({ pollId, pollTitle, onClose }: PollResultsModa
   return (
     <div className="fixed inset-0 bg-transparent backdrop-blur-sm flex items-center justify-center p-4 z-50">
       <Card className="bg-card border-border w-full max-w-4xl max-h-[90vh] flex flex-col rounded-lg shadow-xl gap-0">
+        {/* Header - NOW AT THE TOP */}
+        <CardHeader className="flex-shrink-0 border-b border-border">
+          <div className="flex justify-between items-start">
+            <div>
+              <CardTitle className="text-2xl font-semibold">{pollTitle}</CardTitle>
+              <CardDescription>Poll Results</CardDescription>
+            </div>
+            <Button variant="ghost" size="icon" onClick={onClose}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </CardHeader>
 
         {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto px-6 py-4">
           <div className="space-y-6">
-
             {/* Summary Stats */}
             <div className="grid grid-cols-2 gap-4">
               <Card className="bg-muted border-border rounded-md">
@@ -267,19 +278,6 @@ export function PollResultsModal({ pollId, pollTitle, onClose }: PollResultsModa
             </Card>
           </div>
         </div>
-
-        {/* Header */}
-        <CardHeader className="flex-shrink-0 border-b border-border">
-          <div className="flex justify-between items-start">
-            <div>
-              <CardTitle className="text-2xl font-semibold">{pollTitle}</CardTitle>
-              <CardDescription>Poll Results</CardDescription>
-            </div>
-            <Button variant="ghost" size="icon" onClick={onClose}>
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        </CardHeader>
       </Card>
     </div>
   )
