@@ -1,5 +1,8 @@
 "use client"
 
+// app/home/page.tsx
+"use client"
+
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Navigation } from "@/components/navigation"
@@ -9,6 +12,8 @@ import PollVotingModal from "@/components/poll-voting-modal"
 import { PollCreationModal } from "@/components/poll-creation-modal"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
+
+// ... rest of your existing home page code remains the same, but remove the duplicate Navigation component usage
 
 interface Vote {
   poll_id: string

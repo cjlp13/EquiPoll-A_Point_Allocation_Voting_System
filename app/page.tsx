@@ -1,138 +1,133 @@
-import { createClient } from "@/lib/supabase/server"
-import { redirect } from "next/navigation"
+// app/page.tsx
+"use client"
+
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Plus, TrendingUp } from "lucide-react"
+import { BarChart2, Users, TrendingUp, Sun, Moon } from "lucide-react"
+import { useTheme } from "next-themes"
+import { useEffect, useState } from "react"
 
-export default async function HomePage() {
-  const supabase = await createClient()
+export default function LandingPage() {
+  const { theme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    redirect("/auth/login")
-  }
+  useEffect(() => setMounted(true), [])
 
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
-      <nav className="border-b border-border bg-card">
+      <nav className="border-b border-border bg-card/80 backdrop-blur sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-primary">EquiPoll</h1>
-          <div className="flex gap-4">
-            <Link href="/home">
-              <Button variant="ghost">Home</Button>
+          <div className="text-2xl font-extrabold text-primary tracking-tight">EquiPoll</div>
+          <div className="flex gap-4 items-center">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                if (!mounted) return
+                setTheme(theme === "dark" ? "light" : "dark")
+              }}
+              className="flex items-center gap-2"
+              aria-label="Toggle theme"
+            >
+              {mounted && theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              <span className="text-sm">{mounted ? (theme === "dark" ? "Light" : "Dark") : ""}</span>
+            </Button>
+            <Link href="/auth/login">
+              <Button variant="ghost">Login</Button>
             </Link>
-            <Link href="/my-polls">
-              <Button variant="ghost">My Polls</Button>
-            </Link>
-            <Link href="/account">
-              <Button variant="ghost">Account</Button>
+            <Link href="/auth/sign-up">
+              <Button>Sign Up</Button>
             </Link>
           </div>
         </div>
       </nav>
 
-      {/* Main Content */}
-      <div className="max-w-4xl mx-auto px-6 py-12">
-        {/* Hero Section */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold mb-4">Welcome to Equi Poll</h1>
-          <p className="text-muted-foreground mb-8 text-lg">
-            Create polls, allocate points, and see what others think
+      {/* Hero Section */}
+      <div className="max-w-7xl mx-auto px-6 py-20">
+        <div className="text-center mb-16">
+          <h1 className="text-5xl font-bold mb-6 text-foreground">
+            Make Better Group Decisions with{" "}
+            <span className="text-primary">Point Allocation Voting</span>
+          </h1>
+          <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+            Create polls where voters distribute points across options. Get nuanced insights beyond simple yes/no voting.
           </p>
+          <div className="flex gap-4 justify-center">
+            <Link href="/auth/sign-up">
+              <Button size="lg" className="bg-primary text-primary-foreground">
+                Get Started Free
+              </Button>
+            </Link>
+            <Link href="/auth/login">
+              <Button size="lg" variant="outline">
+                Sign In
+              </Button>
+            </Link>
+          </div>
         </div>
 
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Features */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-20">
           <Card className="bg-card border-border">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-primary" />
-                Browse Polls
-              </CardTitle>
+              <BarChart2 className="h-12 w-12 text-primary mb-4" />
+              <CardTitle>Point Allocation</CardTitle>
               <CardDescription>
-                Explore public polls and see what others are voting on
+                Distribute points across options based on preference strength
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <Link href="/home">
-                <Button variant="outline" className="w-full">
-                  View Public Polls
-                </Button>
-              </Link>
-            </CardContent>
           </Card>
 
           <Card className="bg-card border-border">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Plus className="h-5 w-5 text-primary" />
-                Create Poll
-              </CardTitle>
+              <Users className="h-12 w-12 text-primary mb-4" />
+              <CardTitle>Consensus Building</CardTitle>
               <CardDescription>
-                Start a new poll and invite others to vote with points
+                See where agreement exists with detailed consensus scoring
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <Link href="/my-polls">
-                <Button className="w-full">
-                  Create New Poll
-                </Button>
-              </Link>
-            </CardContent>
+          </Card>
+
+          <Card className="bg-card border-border">
+            <CardHeader>
+              <TrendingUp className="h-12 w-12 text-primary mb-4" />
+              <CardTitle>Rich Analytics</CardTitle>
+              <CardDescription>
+                Understand voter preferences with detailed results and charts
+              </CardDescription>
+            </CardHeader>
           </Card>
         </div>
 
         {/* How It Works */}
-        <Card className="bg-card border-border mt-8">
-          <CardHeader>
-            <CardTitle>How It Works</CardTitle>
-            <CardDescription>
-              Equi Poll lets you make better group decisions with point-based voting
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-start gap-4">
-              <div className="bg-primary/10 text-primary rounded-full w-8 h-8 flex items-center justify-center text-sm font-medium flex-shrink-0">
+        <div className="text-center">
+          <h2 className="text-3xl font-bold mb-12 text-foreground">How It Works</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+            <div className="text-center">
+              <div className="w-12 h-12 bg-primary text-primary-foreground rounded-full flex items-center justify-center mx-auto mb-4 font-bold">
                 1
               </div>
-              <div>
-                <h3 className="font-medium">Create a Poll</h3>
-                <p className="text-sm text-muted-foreground">
-                  Add your question and multiple choice options
-                </p>
-              </div>
+              <h3 className="font-semibold mb-2">Create a Poll</h3>
+              <p className="text-muted-foreground">Add your question and multiple choice options</p>
             </div>
-            
-            <div className="flex items-start gap-4">
-              <div className="bg-primary/10 text-primary rounded-full w-8 h-8 flex items-center justify-center text-sm font-medium flex-shrink-0">
+            <div className="text-center">
+              <div className="w-12 h-12 bg-primary text-primary-foreground rounded-full flex items-center justify-center mx-auto mb-4 font-bold">
                 2
               </div>
-              <div>
-                <h3 className="font-medium">Allocate Points</h3>
-                <p className="text-sm text-muted-foreground">
-                  Voters distribute points among options based on preference
-                </p>
-              </div>
+              <h3 className="font-semibold mb-2">Allocate Points</h3>
+              <p className="text-muted-foreground">Voters distribute 100 points across options</p>
             </div>
-            
-            <div className="flex items-start gap-4">
-              <div className="bg-primary/10 text-primary rounded-full w-8 h-8 flex items-center justify-center text-sm font-medium flex-shrink-0">
+            <div className="text-center">
+              <div className="w-12 h-12 bg-primary text-primary-foreground rounded-full flex items-center justify-center mx-auto mb-4 font-bold">
                 3
               </div>
-              <div>
-                <h3 className="font-medium">See Results</h3>
-                <p className="text-sm text-muted-foreground">
-                  View detailed results with consensus scores and analytics
-                </p>
-              </div>
+              <h3 className="font-semibold mb-2">See Results</h3>
+              <p className="text-muted-foreground">View detailed analytics and consensus scores</p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   )
