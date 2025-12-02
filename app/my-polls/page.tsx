@@ -22,6 +22,10 @@ interface Poll {
   created_at: string
 }
 
+interface VotePoint {
+  points: number
+}
+
 export default function MyPollsPage() {
   
   const [polls, setPolls] = useState<Poll[]>([])
@@ -65,35 +69,72 @@ export default function MyPollsPage() {
 
         if (error) throw error
         setPolls(data || [])
+        
         // Fetch polls the user has answered (vote history)
         try {
-          const { data: votesData, error: votesError } = await supabase
+          // First, get unique poll IDs the user has voted on
+          const { data: userVotesData, error: userVotesError } = await supabase
             .from("votes")
-            .select("created_at, points, polls(id, title)")
+            .select("poll_id, created_at")
             .eq("user_id", user.id)
             .order("created_at", { ascending: false })
 
-          if (votesError) throw votesError
+          if (userVotesError) throw userVotesError
 
-          const map = new Map<string, { id: string; title: string; last_voted_at: string; total_points: number }>()
-          ;(votesData || []).forEach((v: any) => {
-            const p = v.polls
-            if (!p) return
-            const existing = map.get(p.id)
-            const points = Number(v.points) || 0
-            if (!existing) {
-              map.set(p.id, { id: p.id, title: p.title, last_voted_at: v.created_at, total_points: points })
+          // Group by poll_id to get unique polls
+          const pollMap = new Map<string, string>()
+          userVotesData?.forEach((vote: any) => {
+            if (!pollMap.has(vote.poll_id)) {
+              pollMap.set(vote.poll_id, vote.created_at)
             } else {
-              // update last_voted_at if this vote is newer
-              if (new Date(v.created_at) > new Date(existing.last_voted_at)) {
-                existing.last_voted_at = v.created_at
+              // Keep the most recent vote date
+              const existing = pollMap.get(vote.poll_id)
+              if (existing && new Date(vote.created_at) > new Date(existing)) {
+                pollMap.set(vote.poll_id, vote.created_at)
               }
-              existing.total_points = (existing.total_points || 0) + points
-              map.set(p.id, existing)
             }
           })
 
-          setAnsweredPolls(Array.from(map.values()))
+          const pollIds = Array.from(pollMap.keys())
+
+          if (pollIds.length === 0) {
+            setAnsweredPolls([])
+          } else {
+            // Fetch poll details
+            const { data: pollsData, error: pollsError } = await supabase
+              .from("polls")
+              .select("id, title")
+              .in("id", pollIds)
+
+            if (pollsError) throw pollsError
+
+            // Calculate total points per poll for this user
+            const pollsWithPoints = await Promise.all(
+              (pollsData || []).map(async (poll: any) => {
+                const { data: votePoints } = await supabase
+                  .from("votes")
+                  .select("points")
+                  .eq("poll_id", poll.id)
+                  .eq("user_id", user.id)
+
+                const totalPoints = votePoints?.reduce((sum: number, v: VotePoint) => sum + Number(v.points || 0), 0) || 0
+
+                return {
+                  id: poll.id,
+                  title: poll.title,
+                  last_voted_at: pollMap.get(poll.id) || "",
+                  total_points: totalPoints
+                }
+              })
+            )
+
+            // Sort by most recent vote
+            pollsWithPoints.sort((a, b) => 
+              new Date(b.last_voted_at).getTime() - new Date(a.last_voted_at).getTime()
+            )
+
+            setAnsweredPolls(pollsWithPoints)
+          }
         } catch (err) {
           console.error("Error fetching answered polls:", err)
         }

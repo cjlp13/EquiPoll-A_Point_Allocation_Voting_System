@@ -2,110 +2,168 @@
 
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { X } from "lucide-react"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { X, Target } from "lucide-react"
 
-interface Props {
+interface AllocationItem {
+  choice_text: string
+  points: number
+}
+
+interface PollAllocationsModalProps {
   pollId: string
   pollTitle: string
   onClose: () => void
 }
 
-export default function PollAllocationsModal({ pollId, pollTitle, onClose }: Props) {
-  const [allocations, setAllocations] = useState<{
-    choice_text: string
-    points: number
-    created_at?: string
-  }[]>([])
+export default function PollAllocationsModal({ pollId, pollTitle, onClose }: PollAllocationsModalProps) {
+  const [allocations, setAllocations] = useState<AllocationItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [totalPoints, setTotalPoints] = useState(0)
   const supabase = createClient()
 
   useEffect(() => {
-    let mounted = true
-    const fetchAlloc = async () => {
-      setLoading(true)
+    document.body.style.overflow = "hidden"
+    return () => {
+      document.body.style.overflow = ""
+    }
+  }, [])
+
+  useEffect(() => {
+    const fetchAllocations = async () => {
       try {
-        // include created_at so we can show when the user allocated points per choice
-        const { data, error } = await supabase
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
+
+        if (!user) return
+
+        // Fetch user's votes with choice details for this poll
+        const { data: votesData, error: votesError } = await supabase
           .from("votes")
-          .select("points, created_at, poll_choices(choice_text)")
+          .select(`
+            points,
+            poll_choices (
+              choice_text
+            )
+          `)
           .eq("poll_id", pollId)
-          // user can only select their own votes via RLS, so this returns current user's votes
-        if (error) throw error
-        if (!mounted) return
-        const items = (data || []).map((r: any) => ({
-          choice_text: r.poll_choices?.choice_text || "",
-          points: Number(r.points) || 0,
-          created_at: r.created_at,
-        }))
-        setAllocations(items)
-      } catch (err) {
-        console.error("Error fetching allocations:", err)
+          .eq("user_id", user.id)
+
+        if (votesError) throw votesError
+
+        const allocationsData = (votesData || [])
+          .filter((v: any) => v.poll_choices)
+          .map((v: any) => ({
+            choice_text: v.poll_choices.choice_text,
+            points: Number(v.points || 0)
+          }))
+
+        // Sort by points descending
+        allocationsData.sort((a: AllocationItem, b: AllocationItem) => b.points - a.points)
+
+        const total = allocationsData.reduce((sum: number, item: AllocationItem) => sum + item.points, 0)
+
+        setAllocations(allocationsData)
+        setTotalPoints(total)
+      } catch (error) {
+        console.error("Error fetching allocations:", error)
       } finally {
-        if (mounted) setLoading(false)
+        setLoading(false)
       }
     }
 
-    fetchAlloc()
-
-    return () => {
-      mounted = false
-    }
+    fetchAllocations()
   }, [pollId, supabase])
 
-  const totalPoints = allocations.reduce((s, a) => s + (a.points || 0), 0)
+  if (loading) {
+    return (
+      <div className="fixed inset-0 bg-transparent backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <Card className="bg-card border-border w-full max-w-2xl rounded-lg shadow-xl">
+          <CardContent className="pt-6">
+            <p className="text-muted-foreground">Loading your allocations...</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
-    <Dialog open={true} onOpenChange={(open) => { if (!open) onClose() }}>
-      <DialogContent className="max-w-xl w-full max-h-[90vh] flex flex-col p-0 gap-0">
-        {/* Accessible title for screen readers */}
-        <DialogTitle className="sr-only">{pollTitle}</DialogTitle>
-
-        {/* Fixed header */}
-        <div className="px-6 py-4 border-b border-border flex-shrink-0">
-          <h2 className="text-xl font-bold">{pollTitle}</h2>
-          <p className="text-sm text-muted-foreground">Points you allocated</p>
-        </div>
-
-        {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto px-6 py-4">
-          {loading ? (
-            <div className="text-muted-foreground">Loading your allocations…</div>
-          ) : allocations.length === 0 ? (
-            <div className="text-muted-foreground">You haven't allocated points for this poll.</div>
-          ) : (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between px-3 py-2 bg-muted/50 rounded">
-                <div className="text-sm text-muted-foreground">Total points allocated</div>
-                <div className="text-sm font-semibold text-primary">{totalPoints}</div>
-              </div>
-
-              <div className="space-y-2">
-                {allocations.map((a, i) => (
-                  <div key={i} className="p-3 bg-card rounded border border-border">
-                    <div className="flex justify-between items-center">
-                      <div className="text-sm text-foreground">{a.choice_text}</div>
-                      <div className="text-sm font-semibold text-primary">{a.points}</div>
-                    </div>
-                    {a.created_at && (
-                      <div className="text-xs text-muted-foreground mt-1">Allocated: {new Date(a.created_at).toLocaleString()}</div>
-                    )}
-                  </div>
-                ))}
-              </div>
+    <div className="fixed inset-0 bg-transparent backdrop-blur-sm flex items-center justify-center p-4 z-50">
+      <Card className="bg-card border-border w-full max-w-2xl max-h-[90vh] flex flex-col rounded-lg shadow-xl">
+        <CardHeader className="flex-shrink-0 border-b border-border">
+          <div className="flex justify-between items-start">
+            <div>
+              <CardTitle className="text-2xl font-semibold">{pollTitle}</CardTitle>
+              <CardDescription>Your Point Allocations</CardDescription>
             </div>
-          )}
-        </div>
+            <Button variant="ghost" size="icon" onClick={onClose}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </CardHeader>
 
-        {/* Fixed footer */}
-        <div className="px-6 py-4 border-t border-border flex-shrink-0 flex justify-end gap-2">
-          <Button variant="ghost" onClick={onClose}>
-            <X className="h-4 w-4 mr-2" />
-            Close
-          </Button>
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+          <div className="space-y-6">
+            {/* Total Points Summary */}
+            <Card className="bg-muted border-border rounded-md">
+              <CardHeader className="pb-2">
+                <div className="flex items-center gap-2">
+                  <Target className="h-4 w-4 text-primary" />
+                  <CardDescription>Total Points Allocated</CardDescription>
+                </div>
+                <CardTitle className="text-3xl text-primary">{totalPoints}</CardTitle>
+              </CardHeader>
+            </Card>
+
+            {/* Allocations Table */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Point Distribution</h3>
+
+              {allocations.length === 0 ? (
+                <p className="text-muted-foreground text-center py-8">
+                  No allocations found for this poll.
+                </p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Choice</TableHead>
+                      <TableHead className="text-right">Points</TableHead>
+                      <TableHead className="text-right">Percentage</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {allocations.map((allocation, index) => (
+                      <TableRow key={index}>
+                        <TableCell>{allocation.choice_text}</TableCell>
+                        <TableCell className="text-right font-semibold">
+                          {allocation.points}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {totalPoints > 0
+                            ? ((allocation.points / totalPoints) * 100).toFixed(1)
+                            : "0"}
+                          %
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
+          </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </Card>
+    </div>
   )
 }

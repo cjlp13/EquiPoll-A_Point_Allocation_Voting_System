@@ -75,7 +75,7 @@ export function PollResultsModal({ pollId, pollTitle, onClose }: PollResultsModa
 
         const choiceResults = typedChoices.map((choice) => {
           const choiceVotes = typedVotes.filter((v) => v.choice_id === choice.id)
-          const totalPoints = choiceVotes.reduce((sum, v) => sum + Number(v.points), 0)
+          const totalPoints = choiceVotes.reduce((sum: number, v: SupabaseVote) => sum + Number(v.points), 0)
 
           return {
             id: choice.id,
@@ -85,14 +85,14 @@ export function PollResultsModal({ pollId, pollTitle, onClose }: PollResultsModa
           }
         })
 
-        choiceResults.sort((a, b) => b.total_points - a.total_points)
+        choiceResults.sort((a: Choice, b: Choice) => b.total_points - a.total_points)
 
         const uniqueVoters = new Set(typedVotes.map((v) => v.user_id)).size
         setTotalVoters(uniqueVoters)
 
-        const totalPoints = choiceResults.reduce((sum, c) => sum + c.total_points, 0)
+        const totalPoints = choiceResults.reduce((sum: number, c: Choice) => sum + c.total_points, 0)
         if (totalPoints > 0) {
-          const herfindahl = choiceResults.reduce((sum, c) => {
+          const herfindahl = choiceResults.reduce((sum: number, c: Choice) => {
             const proportion = c.total_points / totalPoints
             return sum + proportion * proportion
           }, 0)
