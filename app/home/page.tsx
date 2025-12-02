@@ -3,7 +3,7 @@
 // app/home/page.tsx
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo, useCallback } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Navigation } from "@/components/navigation"
 import { PollCard } from "@/components/poll-card"
@@ -12,8 +12,7 @@ import PollVotingModal from "@/components/poll-voting-modal"
 import { PollCreationModal } from "@/components/poll-creation-modal"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-
-// ... rest of your existing home page code remains the same, but remove the duplicate Navigation component usage
+import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js"
 
 interface Vote {
   poll_id: string
@@ -38,6 +37,7 @@ export default function HomePage() {
   const [votingPoll, setVotingPoll] = useState<{ id: string; title: string; description?: string; options?: { id: string; text: string }[] } | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [user, setUser] = useState<any>(null)
+  const [votingInProgress, setVotingInProgress] = useState(false)
 
   // NEW states for search + filter + sorting
   const [searchQuery, setSearchQuery] = useState("")
@@ -62,42 +62,48 @@ export default function HomePage() {
 
         setUser(user)
 
-        // Fetch polls
-        const { data, error } = await supabase
-          .from("polls")
-          .select(`
-            id,
-            title,
-            description,
-            user_id,
-            created_at,
-            profiles(full_name)
-          `)
-          .order("created_at", { ascending: false })
+        // PARALLEL FETCHING - fetch polls and votes simultaneously
+        const [pollsResponse, votesResponse, voteCountsResponse] = await Promise.all([
+          supabase
+            .from("polls")
+            .select(`
+              id,
+              title,
+              description,
+              user_id,
+              created_at,
+              profiles(full_name)
+            `)
+            .order("created_at", { ascending: false }),
+          
+          supabase
+            .from("votes")
+            .select("poll_id")
+            .eq("user_id", user.id),
+          
+          supabase
+            .from("votes")
+            .select("poll_id")
+        ])
 
-        if (error) return
+        if (pollsResponse.error) {
+          console.error(pollsResponse.error)
+          return
+        }
 
-        // Fetch vote counts (trending sort)
-        const pollsWithVotes = await Promise.all(
-          (data || []).map(async (poll: Poll) => {
-            const { count } = await supabase
-              .from("votes")
-              .select("*", { count: "exact", head: true })
-              .eq("poll_id", poll.id)
+        // Calculate vote counts efficiently
+        const voteCountMap = new Map<string, number>()
+        voteCountsResponse.data?.forEach((vote: Vote) => {
+          voteCountMap.set(vote.poll_id, (voteCountMap.get(vote.poll_id) || 0) + 1)
+        })
 
-            return { ...poll, voteCount: count || 0 }
-          })
-        )
+        const pollsWithVotes = pollsResponse.data?.map((poll: Poll) => ({
+          ...poll,
+          voteCount: voteCountMap.get(poll.id) || 0
+        })) || []
 
         setPolls(pollsWithVotes)
-
-        // Fetch user's votes
-        const { data: votes } = await supabase
-          .from("votes")
-          .select("poll_id")
-          .eq("user_id", user.id)
-
-        setVotedPollIds(new Set(votes?.map((v: Vote) => v.poll_id) || []))
+        setVotedPollIds(new Set(votesResponse.data?.map((v: Vote) => v.poll_id) || []))
       } catch (error) {
         console.error(error)
       } finally {
@@ -106,30 +112,79 @@ export default function HomePage() {
     }
 
     fetchData()
+
+    // REAL-TIME SUBSCRIPTION - update UI when votes change
+    const votesChannel = supabase
+      .channel('votes-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'votes'
+        },
+        async (payload: RealtimePostgresChangesPayload<{ poll_id: string }>) => {
+          // Refetch vote counts when a vote changes
+          const { data: voteCountsResponse } = await supabase
+            .from("votes")
+            .select("poll_id")
+
+          const voteCountMap = new Map<string, number>()
+          voteCountsResponse?.forEach((vote: Vote) => {
+            voteCountMap.set(vote.poll_id, (voteCountMap.get(vote.poll_id) || 0) + 1)
+          })
+
+          setPolls(prevPolls => 
+            prevPolls.map(poll => ({
+              ...poll,
+              voteCount: voteCountMap.get(poll.id) || 0
+            }))
+          )
+
+          // Update voted polls if it's the current user's vote
+          if (payload.eventType === 'INSERT' && user) {
+            const { data: userVotes } = await supabase
+              .from("votes")
+              .select("poll_id")
+              .eq("user_id", user.id)
+            
+            setVotedPollIds(new Set(userVotes?.map((v: Vote) => v.poll_id) || []))
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(votesChannel)
+    }
   }, [supabase, router])
 
-  // --- SEARCH + FILTER + SORT LOGIC ---
-  let filteredPolls = polls.filter((poll) => {
-    const searchLower = searchQuery.toLowerCase()
-    const matchesSearch =
-      poll.title.toLowerCase().includes(searchLower) ||
-      poll.description?.toLowerCase().includes(searchLower) ||
-      poll.profiles?.full_name?.toLowerCase().includes(searchLower)
+  // MEMOIZED FILTERED POLLS - prevent unnecessary recalculations
+  const filteredPolls = useMemo(() => {
+    let result = polls.filter((poll) => {
+      const searchLower = searchQuery.toLowerCase()
+      const matchesSearch =
+        poll.title.toLowerCase().includes(searchLower) ||
+        poll.description?.toLowerCase().includes(searchLower) ||
+        poll.profiles?.full_name?.toLowerCase().includes(searchLower)
 
-    const hasVoted = votedPollIds.has(poll.id)
-    const matchesVoteFilter =
-      voteFilter === "all" ||
-      (voteFilter === "voted" && hasVoted) ||
-      (voteFilter === "not-voted" && !hasVoted)
+      const hasVoted = votedPollIds.has(poll.id)
+      const matchesVoteFilter =
+        voteFilter === "all" ||
+        (voteFilter === "voted" && hasVoted) ||
+        (voteFilter === "not-voted" && !hasVoted)
 
-    return matchesSearch && matchesVoteFilter
-  })
+      return matchesSearch && matchesVoteFilter
+    })
 
-  if (sortBy === "trending") {
-    filteredPolls = [...filteredPolls].sort((a, b) => (b.voteCount || 0) - (a.voteCount || 0))
-  }
+    if (sortBy === "trending") {
+      result = [...result].sort((a, b) => (b.voteCount || 0) - (a.voteCount || 0))
+    }
 
-   const handleRequestVote = async (poll: Poll) => {
+    return result
+  }, [polls, searchQuery, voteFilter, votedPollIds, sortBy])
+
+  const handleRequestVote = useCallback(async (poll: Poll) => {
     // Fetch poll options if not already loaded
     if (!poll.options) {
       const { data: options } = await supabase
@@ -150,7 +205,28 @@ export default function HomePage() {
       description: poll.description,
       options: poll.options 
     })
-  }
+  }, [supabase])
+
+  // OPTIMISTIC UPDATE - add callback for when vote completes
+  const handleVoteComplete = useCallback((pollId: string) => {
+    // Optimistically update the UI
+    setVotedPollIds(prev => {
+      const newSet = new Set(prev)
+      newSet.add(pollId)
+      return newSet
+    })
+
+    setPolls(prevPolls =>
+      prevPolls.map(poll =>
+        poll.id === pollId
+          ? { ...poll, voteCount: (poll.voteCount || 0) + 1 }
+          : poll
+      )
+    )
+
+    setVotingPoll(null)
+    setExpandedPollId(null)
+  }, [])
 
   if (loading) {
     return (
@@ -225,6 +301,7 @@ export default function HomePage() {
                 key={poll.id}
                 poll={poll}
                 expanded={expandedPollId === poll.id}
+                hasVoted={votedPollIds.has(poll.id)}
                 onToggleExpand={(id) => setExpandedPollId(id)}
                 onRequestVote={(p) => handleRequestVote(p)}
                 onRequestResults={(id, title) => setResultsPoll({ id, title })}
@@ -237,7 +314,14 @@ export default function HomePage() {
 
       {showCreateModal && <PollCreationModal onClose={() => setShowCreateModal(false)} onPollCreated={() => setShowCreateModal(false)} />}
       {resultsPoll && <PollResultsModal pollId={resultsPoll.id} pollTitle={resultsPoll.title} onClose={() => setResultsPoll(null)} />}
-      {votingPoll && <PollVotingModal open={!!votingPoll} poll={votingPoll} onClose={() => setVotingPoll(null)} onVoteComplete={() => setExpandedPollId(null)} />}
+      {votingPoll && (
+        <PollVotingModal 
+          open={!!votingPoll} 
+          poll={votingPoll} 
+          onClose={() => setVotingPoll(null)} 
+          onVoteComplete={() => handleVoteComplete(votingPoll.id)} 
+        />
+      )}
     </div>
   )
 }

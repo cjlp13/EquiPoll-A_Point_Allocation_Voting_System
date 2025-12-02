@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, memo } from "react"
 import { User, ThumbsUp, BarChart2 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -20,46 +20,51 @@ interface Poll {
 }
 
 interface PollCardProps {
-  poll: Poll
+  poll: {
+    id: string
+    title: string
+    description: string
+    user_id: string
+    created_at: string
+    profiles?: { full_name: string }
+    voteCount?: number
+  }
+  expanded: boolean
+  hasVoted?: boolean
+  onToggleExpand: (id: string | null) => void // Update type to accept null
+  onRequestVote: (poll: any) => void
+  onRequestResults: (id: string, title: string) => void
   onVote: () => void
-  expanded?: boolean
-  onToggleExpand?: (pollId: string | null) => void
-  onRequestResults?: (pollId: string, pollTitle: string) => void
-  onRequestVote?: (poll: Poll) => void
 }
 
-export function PollCard({ poll, onVote, expanded = false, onToggleExpand, onRequestResults, onRequestVote }: PollCardProps) {
+export const PollCard = memo(function PollCard({
+  poll,
+  expanded,
+  hasVoted,
+  onToggleExpand,
+  onRequestVote,
+  onRequestResults,
+  onVote,
+}: PollCardProps) {
   const [showResults, setShowResults] = useState(false)
-  const [hasVoted, setHasVoted] = useState(false)
   const [user, setUser] = useState<any>(null)
   const [choicesCount, setChoicesCount] = useState<number | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
-    const checkUserAndVote = async () => {
+    const checkUser = async () => {
       try {
         const {
           data: { user },
         } = await supabase.auth.getUser()
         setUser(user)
-
-        if (!user) return
-
-        const { data } = await supabase
-          .from("votes")
-          .select("id")
-          .eq("poll_id", poll.id)
-          .eq("user_id", user.id)
-          .limit(1)
-
-        setHasVoted((data && data.length > 0) || false)
       } catch (error) {
-        console.error("Error checking vote:", error)
+        console.error("Error checking user:", error)
       }
     }
 
-    checkUserAndVote()
-  }, [poll.id, supabase])
+    checkUser()
+  }, [supabase])
 
   useEffect(() => {
     // fetch choices count to add some metadata to the card
@@ -79,7 +84,6 @@ export function PollCard({ poll, onVote, expanded = false, onToggleExpand, onReq
     // Collapse after voting and notify parent
     onVote()
     if (onToggleExpand) onToggleExpand(null)
-    setHasVoted(true)
   }
 
   const contentRef = useRef<HTMLDivElement | null>(null)
@@ -116,6 +120,10 @@ export function PollCard({ poll, onVote, expanded = false, onToggleExpand, onReq
     return () => observer.disconnect()
   }, [expanded])
 
+  // Use the passed hasVoted prop directly instead of checking database
+  const voteButtonText = hasVoted ? "Already Voted" : "Vote Now"
+  const voteButtonDisabled = hasVoted
+
   return (
     <>
       <Card className={`bg-card border-border transition-shadow h-full flex flex-col rounded-lg ${expanded ? 'shadow-2xl' : 'hover:shadow-lg'}`}>
@@ -149,23 +157,17 @@ export function PollCard({ poll, onVote, expanded = false, onToggleExpand, onReq
 
           <div className="flex gap-2 mt-2">
             <Button
-              onClick={() => {
-                if (onRequestVote) {
-                  onRequestVote(poll)
-                } else {
-                  onToggleExpand && onToggleExpand(expanded ? null : String(poll.id))
-                }
-              }}
+              onClick={() => onRequestVote(poll)}
+              disabled={voteButtonDisabled}
               className={`flex-1 ${
-                hasVoted
+                voteButtonDisabled
                   ? "bg-muted text-muted-foreground"
                   : "bg-primary text-primary-foreground"
               }`}
-              disabled={hasVoted}
             >
               <div className="flex items-center justify-center gap-2">
                 <ThumbsUp className="h-4 w-4" />
-                <span>{hasVoted ? "Already Voted" : (expanded ? 'Continue Voting' : 'Vote Now')}</span>
+                <span>{voteButtonText}</span>
               </div>
             </Button>
             <Button
@@ -187,4 +189,4 @@ export function PollCard({ poll, onVote, expanded = false, onToggleExpand, onReq
       )}
     </>
   )
-}
+})
