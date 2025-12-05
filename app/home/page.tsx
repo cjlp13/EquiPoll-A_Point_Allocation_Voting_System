@@ -83,7 +83,7 @@ export default function HomePage() {
           
           supabase
             .from("votes")
-            .select("poll_id")
+            .select("poll_id, user_id")
         ])
 
         if (pollsResponse.error) {
@@ -91,15 +91,18 @@ export default function HomePage() {
           return
         }
 
-        // Calculate vote counts efficiently
-        const voteCountMap = new Map<string, number>()
-        voteCountsResponse.data?.forEach((vote: Vote) => {
-          voteCountMap.set(vote.poll_id, (voteCountMap.get(vote.poll_id) || 0) + 1)
+        // Calculate unique voter counts efficiently
+        const voteCountMap = new Map<string, Set<string>>()
+        voteCountsResponse.data?.forEach((vote: { poll_id: string; user_id: string }) => {
+          if (!voteCountMap.has(vote.poll_id)) {
+            voteCountMap.set(vote.poll_id, new Set())
+          }
+          voteCountMap.get(vote.poll_id)?.add(vote.user_id)
         })
 
         const pollsWithVotes = pollsResponse.data?.map((poll: Poll) => ({
           ...poll,
-          voteCount: voteCountMap.get(poll.id) || 0
+          voteCount: voteCountMap.get(poll.id)?.size || 0
         })) || []
 
         setPolls(pollsWithVotes)
@@ -127,17 +130,20 @@ export default function HomePage() {
           // Refetch vote counts when a vote changes
           const { data: voteCountsResponse } = await supabase
             .from("votes")
-            .select("poll_id")
+            .select("poll_id, user_id")
 
-          const voteCountMap = new Map<string, number>()
-          voteCountsResponse?.forEach((vote: Vote) => {
-            voteCountMap.set(vote.poll_id, (voteCountMap.get(vote.poll_id) || 0) + 1)
+          const voteCountMap = new Map<string, Set<string>>()
+          voteCountsResponse?.forEach((vote: { poll_id: string; user_id: string }) => {
+            if (!voteCountMap.has(vote.poll_id)) {
+              voteCountMap.set(vote.poll_id, new Set())
+            }
+            voteCountMap.get(vote.poll_id)?.add(vote.user_id)
           })
 
           setPolls(prevPolls => 
             prevPolls.map(poll => ({
               ...poll,
-              voteCount: voteCountMap.get(poll.id) || 0
+              voteCount: voteCountMap.get(poll.id)?.size || 0
             }))
           )
 
