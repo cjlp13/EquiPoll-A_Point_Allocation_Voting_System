@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useMemo } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -44,7 +44,7 @@ export function PollResultsModal({ pollId, pollTitle, onClose }: PollResultsModa
   const [loading, setLoading] = useState(true)
   const [totalVoters, setTotalVoters] = useState(0)
   const [consensusScore, setConsensusScore] = useState(0)
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
   useEffect(() => {
     document.body.style.overflow = "hidden"
@@ -113,28 +113,38 @@ export function PollResultsModal({ pollId, pollTitle, onClose }: PollResultsModa
   useEffect(() => {
     fetchResults()
 
+    console.log('Setting up real-time subscription for poll:', pollId)
+
     // Set up real-time subscription for vote changes
     const channel = supabase
       .channel(`poll-results-${pollId}`)
       .on(
         'postgres_changes',
         {
-          event: '*', // Listen to INSERT, UPDATE, and DELETE
+          event: '*',
           schema: 'public',
           table: 'votes',
           filter: `poll_id=eq.${pollId}`
         },
         (payload: any) => {
-          console.log('Vote change detected:', payload)
-          // Refresh results when votes change
+          console.log('Vote change detected, refreshing results:', payload)
           fetchResults()
         }
       )
-      .subscribe()
+      .subscribe((status: string, err?: Error) => {
+        console.log('Subscription status:', status)
+        if (err) {
+          console.error('Subscription error:', err)
+        }
+        if (status === 'SUBSCRIBED') {
+          console.log('Successfully subscribed to poll changes')
+        }
+      })
 
     // Cleanup subscription on unmount
     return () => {
-      supabase.removeChannel(channel)
+      console.log('Cleaning up subscription for poll:', pollId)
+      channel.unsubscribe()
     }
   }, [pollId, fetchResults, supabase])
 

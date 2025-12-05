@@ -146,6 +146,29 @@ export default function MyPollsPage() {
     }
 
     fetchData()
+
+    // Set up real-time subscription for vote changes on all polls
+    const channel = supabase
+      .channel('my-polls-votes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'votes'
+        },
+        (payload: any) => {
+          console.log('Vote change detected, refreshing data:', payload)
+          fetchData()
+        }
+      )
+      .subscribe((status: string) => {
+        console.log('My polls subscription status:', status)
+      })
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [supabase, router])
 
   const handleDeletePoll = async (pollId: string) => {
