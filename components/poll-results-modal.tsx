@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -53,66 +53,90 @@ export function PollResultsModal({ pollId, pollTitle, onClose }: PollResultsModa
     }
   }, [])
 
-  useEffect(() => {
-    const fetchResults = async () => {
-      try {
-        const { data: choicesData, error: choicesError } = await supabase
-          .from("poll_choices")
-          .select("id, choice_text")
-          .eq("poll_id", pollId)
+  const fetchResults = useCallback(async () => {
+    try {
+      const { data: choicesData, error: choicesError } = await supabase
+        .from("poll_choices")
+        .select("id, choice_text")
+        .eq("poll_id", pollId)
 
-        if (choicesError) throw choicesError
+      if (choicesError) throw choicesError
 
-        const { data: votesData, error: votesError } = await supabase
-          .from("votes")
-          .select("choice_id, points, user_id")
-          .eq("poll_id", pollId)
+      const { data: votesData, error: votesError } = await supabase
+        .from("votes")
+        .select("choice_id, points, user_id")
+        .eq("poll_id", pollId)
 
-        if (votesError) throw votesError
+      if (votesError) throw votesError
 
-        const typedChoices = choicesData as SupabaseChoice[]
-        const typedVotes = votesData as SupabaseVote[]
+      const typedChoices = choicesData as SupabaseChoice[]
+      const typedVotes = votesData as SupabaseVote[]
 
-        const choiceResults = typedChoices.map((choice) => {
-          const choiceVotes = typedVotes.filter((v) => v.choice_id === choice.id)
-          const totalPoints = choiceVotes.reduce((sum: number, v: SupabaseVote) => sum + Number(v.points), 0)
+      const choiceResults = typedChoices.map((choice) => {
+        const choiceVotes = typedVotes.filter((v) => v.choice_id === choice.id)
+        const totalPoints = choiceVotes.reduce((sum: number, v: SupabaseVote) => sum + Number(v.points), 0)
 
-          return {
-            id: choice.id,
-            choice_text: choice.choice_text,
-            total_points: totalPoints,
-            vote_count: choiceVotes.length,
-          }
-        })
-
-        choiceResults.sort((a: Choice, b: Choice) => b.total_points - a.total_points)
-
-        const uniqueVoters = new Set(typedVotes.map((v) => v.user_id)).size
-        setTotalVoters(uniqueVoters)
-
-        const totalPoints = choiceResults.reduce((sum: number, c: Choice) => sum + c.total_points, 0)
-        if (totalPoints > 0) {
-          const herfindahl = choiceResults.reduce((sum: number, c: Choice) => {
-            const proportion = c.total_points / totalPoints
-            return sum + proportion * proportion
-          }, 0)
-
-          const normalizedScore =
-            ((herfindahl - 1 / choiceResults.length) / (1 - 1 / choiceResults.length)) * 100
-
-          setConsensusScore(Math.round(normalizedScore))
+        return {
+          id: choice.id,
+          choice_text: choice.choice_text,
+          total_points: totalPoints,
+          vote_count: choiceVotes.length,
         }
+      })
 
-        setChoices(choiceResults)
-      } catch (error) {
-        console.error("Error fetching results:", error)
-      } finally {
-        setLoading(false)
+      choiceResults.sort((a: Choice, b: Choice) => b.total_points - a.total_points)
+
+      const uniqueVoters = new Set(typedVotes.map((v) => v.user_id)).size
+      setTotalVoters(uniqueVoters)
+
+      const totalPoints = choiceResults.reduce((sum: number, c: Choice) => sum + c.total_points, 0)
+      if (totalPoints > 0) {
+        const herfindahl = choiceResults.reduce((sum: number, c: Choice) => {
+          const proportion = c.total_points / totalPoints
+          return sum + proportion * proportion
+        }, 0)
+
+        const normalizedScore =
+          ((herfindahl - 1 / choiceResults.length) / (1 - 1 / choiceResults.length)) * 100
+
+        setConsensusScore(Math.round(normalizedScore))
       }
-    }
 
+      setChoices(choiceResults)
+    } catch (error) {
+      console.error("Error fetching results:", error)
+    } finally {
+      setLoading(false)
+    }
+  }, [pollId, supabase])
+
+  useEffect(() => {
     fetchResults()
-  }, [pollId])
+
+    // Set up real-time subscription for vote changes
+    const channel = supabase
+      .channel(`poll-results-${pollId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to INSERT, UPDATE, and DELETE
+          schema: 'public',
+          table: 'votes',
+          filter: `poll_id=eq.${pollId}`
+        },
+        (payload: any) => {
+          console.log('Vote change detected:', payload)
+          // Refresh results when votes change
+          fetchResults()
+        }
+      )
+      .subscribe()
+
+    // Cleanup subscription on unmount
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [pollId, fetchResults, supabase])
 
   const getBarColor = (index: number) => {
     const colors = ["#8b1d1d", "#9e3b36", "#b86b66", "#7a1a18", "#5f1514"]
