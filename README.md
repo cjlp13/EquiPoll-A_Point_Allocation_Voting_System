@@ -2,8 +2,7 @@
 A modern web application for creating and participating in polls using a point allocation voting system. Express nuanced preferences by distributing points across multiple options and see consensus scores in real-time.
 
 ## 🚀 Live Website
-**URL:** https://equipoll.vercel.app/
-
+**Website:** [Equipoll](https://equipoll.vercel.app/)
 ## 🧪 Demo Accounts
 ### Account 1 - YETI
 **Email:** xamile3825@chaineor.com
@@ -83,16 +82,16 @@ cd equipoll
 npm install
 ```
 3. Set up environment variables:
-- Create `.env.local` file
-- Add your Supabase credentials:
+  - Create `.env.local` file
+  - Add your Supabase credentials:
 ```
 NEXT_PUBLIC_SUPABASE_URL=your_project_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
 ```
 4. Set up database:
-- Create tables in Supabase
-- Enable Row Level Security (RLS)
-- Configure authentication
+  - Create tables in Supabase
+  - Enable Row Level Security (RLS)
+  - Configure authentication
   
 5. Run development server:
 ```
@@ -100,7 +99,7 @@ npm run dev
 ```
 
 6. Open in browser:
-Visit `http://localhost:3000`
+  - Visit `http://localhost:3000`
 
 ## 📦 Tech Stack
 **Frontend:** Next.js 14, TypeScript, Tailwind CSS
@@ -128,5 +127,3 @@ The application is deployed on Vercel. To deploy your own version:
 For issues or questions:
 - Use the demo accounts to explore the application
 - Check the application documentation
-
-Contact the development team for support
