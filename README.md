@@ -102,19 +102,19 @@ npm run dev
   - Visit `http://localhost:3000`
 
 ## 📦 Tech Stack
-**Frontend:** Next.js 14, TypeScript, Tailwind CSS
-**UI Components:** shadcn/ui
-**Charts:** Recharts
-**Backend:** Supabase (PostgreSQL, Authentication, Real-time)
-**Deployment:** Vercel
-**Icons:** Lucide React
+- **Frontend:** Next.js 14, TypeScript, Tailwind CSS
+- **UI Components:** shadcn/ui
+- **Charts:** Recharts
+- **Backend:** Supabase (PostgreSQL, Authentication, Real-time)
+- **Deployment:** Vercel
+- **Icons:** Lucide React
 
 ## 🔧 Development Commands
-`npm run dev` - Start development server
-`npm run build` - Build for production
-`npm start` - Run production build
-`npm run lint` - Run ESLint
-`npm run format` - Format code with Prettier
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm start` - Run production build
+- `npm run lint` - Run ESLint
+- `npm run format` - Format code with Prettier
 
 ## 🚢 Deployment
 The application is deployed on Vercel. To deploy your own version:
