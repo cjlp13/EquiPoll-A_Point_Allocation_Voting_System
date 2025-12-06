@@ -88,17 +88,12 @@ npm install
 NEXT_PUBLIC_SUPABASE_URL=your_project_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
 ```
-4. Set up database:
-  - Create tables in Supabase
-  - Enable Row Level Security (RLS)
-  - Configure authentication
-  
-5. Run development server:
+4. Run development server:
 ```
 npm run dev
 ```
 
-6. Open in browser:
+5. Open in browser:
   - Visit `http://localhost:3000`
 
 ## 📦 Tech Stack
@@ -108,13 +103,6 @@ npm run dev
 - **Backend:** Supabase (PostgreSQL, Authentication, Real-time)
 - **Deployment:** Vercel
 - **Icons:** Lucide React
-
-## 🔧 Development Commands
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm start` - Run production build
-- `npm run lint` - Run ESLint
-- `npm run format` - Format code with Prettier
 
 ## 🚢 Deployment
 The application is deployed on Vercel. To deploy your own version:
@@ -126,4 +114,4 @@ The application is deployed on Vercel. To deploy your own version:
 ## 🆘 Support
 For issues or questions:
 - Use the demo accounts to explore the application
-- Check the application documentation
+- Check the **application documentation:** [Equipoll Documentation](https://docs.google.com/document/d/1aRrL2fUq6GfB32xu7Chx7-d1TzHdT4yIPV-RJ6wEBec/edit?usp=sharing)
