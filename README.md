@@ -18,7 +18,7 @@ A modern web application for creating and participating in polls using a point a
 - **Consensus Agreement:** (%) of group consensus agreement is calculated.
 - **Interactive Charts:** Visual representations of voting results
 - **Manage Polls:** Add, modify, or delete your polls!
-- **Vote History: **Browse your past votes along with their point allocation.
+- **Vote History:** Browse your past votes along with their point allocation.
 - **Search & Filter:** Search for polls by any field.
 - **Dark/Light Theme:** Get interface in your favorite contrast style.
 
