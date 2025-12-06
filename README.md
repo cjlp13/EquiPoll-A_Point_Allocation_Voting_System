@@ -115,3 +115,7 @@ The application is deployed on Vercel. To deploy your own version:
 For issues or questions:
 - Use the demo accounts to explore the application
 - Check the **application documentation:** [Equipoll Documentation](https://docs.google.com/document/d/1aRrL2fUq6GfB32xu7Chx7-d1TzHdT4yIPV-RJ6wEBec/edit?usp=sharing)
+
+## 🧑 Contributors
+* [Justine Padua](https://github.com/cjlp13) 
+* [Kent Pagcaliuangan](https://github.com/iZilchi) 
